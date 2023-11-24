@@ -41,7 +41,7 @@ stationary_object_ids = [13, 56, 57, 58, 59, 60, 61, 62, 68, 69, 70, 71, 72]
 stationary_objects_bboxes = {}
 
 # Load the YOLOv8 model
-model = YOLO('yolov8s-seg.pt')
+model = YOLO('yolov8n-seg.pt')
 
 # Store the track history and for FPS calculation
 track_history = defaultdict(lambda: [])
@@ -121,7 +121,8 @@ while cap.isOpened():
             last_processed_time = new_frame_time  # Update the last processed time
 
             # Run YOLOv8 tracking on the frame
-            results = model.track(frame, persist=True)
+            #results = model.track(frame, conf=0.8, persist=True, show=True)
+            results = model.track(frame, tracker='bytetrack.yaml', conf=0.8, iou=0.6, classes=[0, 1, 2], show=True, persist=True, verbose=False)
 
             if results[0].boxes is not None and getattr(results[0].boxes, 'id', None) is not None:
                 boxes = results[0].boxes.xywh.cpu()
