@@ -139,7 +139,7 @@ while cap.isOpened():
         new_frame_time = time.time()
 
         # Run YOLOv8 segmentation on the frame
-        results = model.track(frame)
+        results = model(frame)
         #results = model.track(frame, conf=0.8, iou=0.6, persist=True)
 
 

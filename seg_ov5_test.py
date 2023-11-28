@@ -6,9 +6,13 @@ from ultralytics import YOLO
 
 # Load a pretrained YOLOv8n-seg Segment model
 model = YOLO('yolov8m-seg.pt')
-
+image = 'test_images/IMG_5064.JPG'
 # Run inference on an image
-results = model('test_images/IMG_5064.JPG')  # results list
+#results = model(image)  # results list
+#results = model.track(image, persist=True)
+results = model.track(image, show=True)
+
+
 result = results[0]  # Get the first result, assuming a single image
 
 # Create a directory for output
