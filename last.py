@@ -1,53 +1,34 @@
+from collections import defaultdict
 from itertools import combinations
-import torch
-import cv2
-from pathlib import Path
-from ultralytics import YOLO
 
-# Load a pretrained YOLOv8n-seg Segment model
+import cv2
+import numpy as np
+import time
+import torch
+from ultralytics import YOLO
+from mysql.connector import connect, Error
+from datetime import datetime
+
+# Load the YOLOv8 segmentation model
 model = YOLO('yolov8m-seg.pt')
 
-# Run inference on an image
-results = model('test_images/IMG_5064.JPG')  # results list
-result = results[0]  # Get the first result, assuming a single image
+# Open the video file or webcam
+video_path = 0
+try:
+    cap = cv2.VideoCapture(video_path)
+except Exception as e:
+    print(f"Error opening video source: {e}")
+    exit(1)
 
-# Create a directory for output
-Path("./test_output/").mkdir(parents=True, exist_ok=True)
+# Connect to the database
+try:
+    db = connect(host="localhost", user="root", password="", database="assistant")
+    cursor = db.cursor()
+except Error as e:
+    print(f"Error connecting to MySQL: {e}")
+    exit(1)
 
-# Save the original image
-cv2.imwrite("./test_output/original_image.jpg", result.orig_img)
-
-# Process the results
-seg_classes = list(result.names.values())
-seg_class_indices = set(result.names.keys())
-
-class_masks = {}
-mask_areas = {}
-bounding_boxes = {}
-
-for result in results:
-    masks = result.masks.data
-    boxes = result.boxes.data
-    clss = boxes[:, 5]
-
-    for i in seg_class_indices:
-        if i in clss:
-            seg_class = seg_classes[i]
-            obj_indices = torch.where(clss == i)
-            obj_masks = masks[obj_indices]
-            obj_mask = torch.any(obj_masks, dim=0).int() * 255
-            class_masks[seg_class] = obj_mask
-            mask_areas[seg_class] = torch.sum(obj_mask).item()
-            cv2.imwrite(f'./test_output/{seg_class}s.jpg', obj_mask.cpu().numpy())
-
-            # Extract bounding boxes
-            obj_bbox = boxes[obj_indices].squeeze(0)
-            if obj_bbox.ndim == 1:  # In case squeezing leads to a 1D tensor
-                bounding_boxes[seg_class] = obj_bbox.unsqueeze(0)  # Add an extra dimension
-            else:
-                bounding_boxes[seg_class] = obj_bbox
-
-# Function to determine spatial relationship
+# Function to determine spatial relationships
 def determine_spatial_relationship(class1, boxes1, area1, class2, boxes2, area2):
     for box1 in boxes1:
         for box2 in boxes2:
@@ -144,4 +125,70 @@ def process_overlaps(class_masks, mask_areas, bounding_boxes):
             if any(do_bounding_boxes_overlap(box1, box2) for box1 in bounding_boxes[class1] for box2 in bounding_boxes[class2]):
                 print(f"{class1} is near {class2}")
 
-process_overlaps(class_masks, mask_areas, bounding_boxes)
+# Store the track history and for FPS calculation
+prev_frame_time = 0
+
+# Loop through the video frames
+while cap.isOpened():
+    try:
+        success, frame = cap.read()
+        if not success:
+            print("Failed to grab frame")
+            break
+
+        new_frame_time = time.time()
+
+        # Run YOLOv8 segmentation on the frame
+        results = model.track(frame)
+        #results = model.track(frame, conf=0.8, iou=0.6, persist=True)
+
+
+        # Process the results to get masks and bounding boxes
+        class_masks = {}
+        mask_areas = {}
+        bounding_boxes = {}
+        seg_classes = list(results[0].names.values())
+        seg_class_indices = set(results[0].names.keys())
+
+        for result in results:
+            masks = result.masks.data
+            boxes = result.boxes.data
+            clss = boxes[:, 5]
+
+            for i in seg_class_indices:
+                if i in clss:
+                    seg_class = seg_classes[i]
+                    obj_indices = torch.where(clss == i)
+                    obj_masks = masks[obj_indices]
+                    obj_mask = torch.any(obj_masks, dim=0).int() * 255
+                    class_masks[seg_class] = obj_mask
+                    mask_areas[seg_class] = torch.sum(obj_mask).item()
+
+                    # Extract bounding boxes
+                    obj_bbox = boxes[obj_indices].squeeze(0)
+                    if obj_bbox.ndim == 1:  # In case squeezing leads to a 1D tensor
+                        bounding_boxes[seg_class] = obj_bbox.unsqueeze(0)  # Add an extra dimension
+                    else:
+                        bounding_boxes[seg_class] = obj_bbox
+
+        # Determine spatial relationships
+        process_overlaps(class_masks, mask_areas, bounding_boxes)
+
+        # Calculate and display the FPS
+        fps = 1 / (new_frame_time - prev_frame_time)
+        prev_frame_time = new_frame_time
+        cv2.putText(frame, f"FPS: {fps:.2f}", (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 3, cv2.LINE_AA)
+
+        # Show the frame
+        cv2.imshow("YOLOv8 Segmentation", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+    except Exception as e:
+        print(f"An error occurred during video processing: {e}")
+
+cap.release()
+cv2.destroyAllWindows()
+if cursor and db:
+    cursor.close()
+    db.close()
