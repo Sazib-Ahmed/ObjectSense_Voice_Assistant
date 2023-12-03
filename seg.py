@@ -20,6 +20,7 @@ def masks_overlap(mask1, mask2):
 
 # Load the YOLOv8 model
 model = YOLO('yolov8n-seg.pt')
+#model = YOLO('yolov8n.pt')
 
 # Open the video file
 cap = cv2.VideoCapture(0)
@@ -38,7 +39,12 @@ while cap.isOpened():
 
     if success:
         # Run YOLOv8 inference on the frame
-        results = model(frame)
+        #results = model.track(frame, conf=0.20, imgsz=640, iou=0.45, half=False)
+        # Run YOLOv8 inference on the frame with ByteTrack tracker
+        results = model.track(frame, tracker="bytetrack.yaml", persist=True, conf=0.50, imgsz=640, iou=0.50) 
+        #results = model.track(source='video.mp4', conf=0.30, imgsz=800, iou=0.50, half=True, tracker='deepsort', device='cuda', visualize=True, save_results=True, save_path='results.avi', verbose=True)
+        #results = model.track(source="path/to/video.mp4", show=True, tracker='botsort.yaml', conf=0.25, iou=0.45, max_det=1000, max_age=30, n_init=3, device='cuda')
+
 
         # Visualize the results on the frame
         annotated_frame = results[0].plot()
