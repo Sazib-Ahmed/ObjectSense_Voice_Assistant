@@ -10,7 +10,7 @@ from mysql.connector import connect, Error
 from datetime import datetime
 
 # Load the YOLOv8 segmentation model
-model = YOLO('yolov8m-seg.pt')
+model = YOLO('yolov8n-seg.pt')
 
 # Open the video file or webcam
 video_path = 0
@@ -139,7 +139,10 @@ while cap.isOpened():
         new_frame_time = time.time()
 
         # Run YOLOv8 segmentation on the frame
-        results = model(frame)
+        #results = model(frame)
+        #results = model.track(frame, tracker="bytetrack.yaml", persist=True, conf=0.50, imgsz=640, iou=0.50) 
+        results = model(frame, conf=0.50, imgsz=640, iou=0.50) 
+
         #results = model.track(frame, conf=0.8, iou=0.6, persist=True)
 
 
