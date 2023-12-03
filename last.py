@@ -127,6 +127,7 @@ def process_overlaps(class_masks, mask_areas, bounding_boxes):
 
 # Store the track history and for FPS calculation
 prev_frame_time = 0
+track_history = defaultdict(lambda: [])
 
 # Loop through the video frames
 while cap.isOpened():
@@ -141,9 +142,13 @@ while cap.isOpened():
         # Run YOLOv8 segmentation on the frame
         #results = model(frame)
         #results = model.track(frame, tracker="bytetrack.yaml", persist=True, conf=0.50, imgsz=640, iou=0.50) 
-        results = model(frame, conf=0.50, imgsz=640, iou=0.50) 
+        #results = model(frame, conf=0.50, imgsz=640, iou=0.50) 
 
-        #results = model.track(frame, conf=0.8, iou=0.6, persist=True)
+        results = model.track(frame, conf=0.5, iou=0.6, persist=True)
+
+        # Get the boxes and track IDs
+        boxes = results[0].boxes.xywh.cpu()
+        track_ids = results[0].boxes.id.int().cpu().tolist()
 
 
         # Process the results to get masks and bounding boxes
@@ -152,6 +157,20 @@ while cap.isOpened():
         bounding_boxes = {}
         seg_classes = list(results[0].names.values())
         seg_class_indices = set(results[0].names.keys())
+        # Visualize the results on the frame
+        annotated_frame = results[0].plot()
+        
+        # Plot the tracks
+        for box, track_id in zip(boxes, track_ids):
+            x, y, w, h = box
+            track = track_history[track_id]
+            track.append((float(x), float(y)))  # x, y center point
+            if len(track) > 30:  # retain 90 tracks for 90 frames
+                track.pop(0)
+
+            # Draw the tracking lines
+            points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
+            cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
 
         for result in results:
             masks = result.masks.data
@@ -183,7 +202,7 @@ while cap.isOpened():
         cv2.putText(frame, f"FPS: {fps:.2f}", (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 3, cv2.LINE_AA)
 
         # Show the frame
-        cv2.imshow("YOLOv8 Segmentation", frame)
+        cv2.imshow("YOLOv8 Segmentation and Tracking", annotated_frame)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
