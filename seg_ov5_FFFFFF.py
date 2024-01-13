@@ -5,10 +5,12 @@ from pathlib import Path
 from ultralytics import YOLO
 
 # Load a pretrained YOLOv8n-seg Segment model
-model = YOLO('yolov8m-seg.pt')
+model = YOLO('yolov8l-seg.pt')
 
 # Run inference on an image
-results = model('test_images/IMG_5064.JPG')  # results list
+#results = model('test_images/IMG_5064.JPG')  # results list
+results = model.track('test_images/IMG_5064.JPG')  # results list
+
 result = results[0]  # Get the first result, assuming a single image
 
 # Create a directory for output
@@ -20,18 +22,31 @@ cv2.imwrite("./test_output/original_image.jpg", result.orig_img)
 # Process the results
 seg_classes = list(result.names.values())
 seg_class_indices = set(result.names.keys())
+print(seg_classes)
+
+print(seg_class_indices)
+
 
 class_masks = {}
 mask_areas = {}
 bounding_boxes = {}
 
 for result in results:
+    print("In loop")
     masks = result.masks.data
     boxes = result.boxes.data
+    print(result.boxes.cls)
+    print(masks)
+    print(boxes)
     clss = boxes[:, 5]
+    clss = result.boxes.cls
+
+    print(clss)
 
     for i in seg_class_indices:
+        print("In loop 2")
         if i in clss:
+            print("In loop 3----------------")
             seg_class = seg_classes[i]
             obj_indices = torch.where(clss == i)
             obj_masks = masks[obj_indices]
