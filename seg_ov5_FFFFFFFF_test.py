@@ -10,16 +10,10 @@ fixed_objects={13,56,57,58,59,60,62,68,69,72}
 model = YOLO('../yolov8x-seg.pt')
 
 # Run inference on an image
-#results = model('test_images/IMG_5064.JPG')  # results list
-results = model.track('test_images/IMG_5065.JPG')  # results list
+results = model.track('test_images/IMG_5064.JPG')  # results list
+#results = model.track('../Sequence01.mp4',strem = true)  # results list
 
 result = results[0]  # Get the first result, assuming a single image
-
-# Create a directory for output
-Path("./test_output/").mkdir(parents=True, exist_ok=True)
-
-# Save the original image
-cv2.imwrite("./test_output/original_image.jpg", result.orig_img)
 
 # Process the results
 seg_classes = list(result.names.values())
