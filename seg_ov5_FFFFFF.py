@@ -8,8 +8,8 @@ from ultralytics import YOLO
 model = YOLO('yolov8l-seg.pt')
 
 # Run inference on an image
-#results = model('test_images/IMG_5064.JPG')  # results list
-results = model.track('test_images/IMG_5064.JPG')  # results list
+results = model('test_images/IMG_5064.JPG')  # results list
+#results = model.track('test_images/IMG_5064.JPG')  # results list
 
 result = results[0]  # Get the first result, assuming a single image
 
