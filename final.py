@@ -219,7 +219,8 @@ while cap.isOpened():
             #boxes = results[0].boxes.xywh.cpu()
             masks = results[0].masks.data
             boxes = results[0].boxes.data
-            track_ids = results[0].boxes.id.int().cpu().tolist()
+            #track_ids = results[0].boxes.id.int().cpu().tolist()
+            track_ids = results[0].boxes.id
             #class_ids = results[0].boxes.cls.int().cpu().tolist()
             class_ids = results[0].boxes.cls
 
@@ -243,7 +244,7 @@ while cap.isOpened():
 
             process_overlaps(class_masks, mask_areas, bounding_boxes)
             annotated_frame = results[0].plot()
-            
+
             # for box, track_id, class_id in zip(boxes, track_ids, class_ids):
             #     if class_id in mobile_object_ids or class_id in stationary_object_ids:
             #         x, y, w, h = box
