@@ -9,6 +9,8 @@ from ultralytics import YOLO
 from mysql.connector import connect, Error
 from datetime import datetime
 
+def sep(mes="---"):
+    print("==================================="+mes+"===================================")
 # class names present in the model
 class_names = (
     "person", "bicycle", "car", "motorcycle", "airplane",
@@ -63,40 +65,6 @@ try:
 except Error as e:
     print(f"Error connecting to MySQL: {e}")
     exit(1)
-
-def check_overlap(moving_bbox, stationary_bbox):
-    mx, my, mw, mh = moving_bbox
-    sx, sy, sw, sh = stationary_bbox
-
-    horizontal_overlap = (mx < sx + sw) and (mx + mw > sx)
-    vertical_overlap = (my < sy + sh) and (my + mh > sy)
-
-    return horizontal_overlap and vertical_overlap
-
-def check_relative_position(moving_bbox, stationary_bbox):
-    mx, my, mw, mh = moving_bbox
-    sx, sy, sw, sh = stationary_bbox
-    moving_center = (mx + mw / 2, my + mh / 2)
-    stationary_center = (sx + sw / 2, sy + sh / 2)
-
-    if moving_center[1] > stationary_center[1]:  # Moving object is below the stationary object
-        return "below"
-    elif moving_center[1] < stationary_center[1]:  # Moving object is above the stationary object
-        return "above"
-    elif moving_center[0] < stationary_center[0]:  # Moving object is to the left of the stationary object
-        return "left of"
-    elif moving_center[0] < stationary_center[0]:  # Moving object is to the right of the stationary object
-        return "right of"
-    else:  
-        return "near"
-
-def generate_location(moving_bbox, stationary_bboxes, class_names):
-    for stationary_id, stationary_bbox in stationary_bboxes.items():
-        if check_overlap(moving_bbox, stationary_bbox):
-            relative_position = check_relative_position(moving_bbox, stationary_bbox)
-            return f"{relative_position} {class_names[stationary_id]}"
-
-    return "unknown"
 
 
 
@@ -201,6 +169,39 @@ def process_overlaps(class_masks, mask_areas, bounding_boxes):
             if any(do_bounding_boxes_overlap(box1, box2) for box1 in bounding_boxes[class1] for box2 in bounding_boxes[class2]):
                 print(f"{class1} is near {class2}")
 
+
+
+
+# Dictionary to hold the locations of mobile objects
+mobile_objects_locations = {}
+
+# Function to calculate distance between two points
+def calculate_distance(point1, point2):
+    x1, y1 = point1
+    x2, y2 = point2
+    return np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+
+# Function to find the nearest stationary object for a given mobile object
+def find_nearest_stationary_object(mobile_object_location, stationary_objects_locations):
+    min_distance = float('inf')
+    nearest_stationary_object = None
+
+    for stationary_object, stationary_location in stationary_objects_locations.items():
+        distance = calculate_distance(mobile_object_location, stationary_location)
+        if distance < min_distance:
+            min_distance = distance
+            nearest_stationary_object = stationary_object
+
+    return nearest_stationary_object
+
+
+
+
+
+
+
+
+
 # Loop through the video frames
 while cap.isOpened():
     try:
@@ -224,71 +225,53 @@ while cap.isOpened():
             #class_ids = results[0].boxes.cls.int().cpu().tolist()
             class_ids = results[0].boxes.cls
 
-            for i in class_ids:
-                i=int(i)
+            for i, track_id in enumerate(track_ids):
+                track_id = int(track_id)
+                print("Tracking ID:",track_id)
+                print(type(track_id))
+                class_id = class_ids[i].int().item()
+                print("Class ID:",class_id)
+                print(type(class_id))
+                class_name=class_names[class_id]
+                print("Clase Name:",class_name)
+                print(type(class_name))
+                if class_id in mobile_object_ids:
+                    print("Mobile object")
+                else:
+                    print("Stationary object")
 
                 seg_class = class_names[i]
-                obj_indices = torch.where(class_ids == i)
+                obj_indices = torch.where(track_ids == track_id)
                 obj_masks = masks[obj_indices]
                 obj_mask = torch.any(obj_masks, dim=0).int() * 255
-                class_masks[seg_class] = obj_mask
-                mask_areas[seg_class] = torch.sum(obj_mask).item()
+                class_masks[track_id] = obj_mask
+                mask_areas[track_id] = torch.sum(obj_mask).item()
                 #cv2.imwrite(f'./test_output/{seg_class}s.jpg', obj_mask.cpu().numpy())
 
                 # Extract bounding boxes
                 obj_bbox = boxes[obj_indices].squeeze(0)
                 if obj_bbox.ndim == 1:  # In case squeezing leads to a 1D tensor
-                    bounding_boxes[seg_class] = obj_bbox.unsqueeze(0)  # Add an extra dimension
+                    bounding_boxes[track_id] = obj_bbox.unsqueeze(0)  # Add an extra dimension
                 else:
-                    bounding_boxes[seg_class] = obj_bbox
+                    bounding_boxes[track_id] = obj_bbox
 
+                # Get the location of mobile objects
+                if i in mobile_object_ids:
+                    sep("IN if i ")
+                    print(i)
+                    mobile_object_location = (int((obj_bbox[0] + obj_bbox[2]) / 2), int((obj_bbox[1] + obj_bbox[3]) / 2))
+                    mobile_objects_locations[seg_class] = mobile_object_location
+
+            sep()
+            # Find the nearest stationary object for each mobile object
+            for mobile_object, mobile_location in mobile_objects_locations.items():
+                nearest_stationary_object = find_nearest_stationary_object(mobile_location, stationary_objects_bboxes)
+                print(f"{mobile_object} is near {nearest_stationary_object}")
+
+            sep()
             process_overlaps(class_masks, mask_areas, bounding_boxes)
-            print(class_masks)
-            print(mask_areas)
-            print(bounding_boxes)
             annotated_frame = results[0].plot()
-
-            # for box, track_id, class_id in zip(boxes, track_ids, class_ids):
-            #     if class_id in mobile_object_ids or class_id in stationary_object_ids:
-            #         x, y, w, h = box
-            #         x_value = float(x)
-            #         y_value = float(y)
-            #         w_value = float(w)
-            #         h_value = float(h)
-            #         class_name = class_names[class_id]
-            #         class_type = 1 if class_id in mobile_object_ids else 0
-            #         # Check if it's a stationary object and update its bbox
-            #         if class_id in stationary_object_ids:
-            #             stationary_objects_bboxes[class_id] = (x_value, y_value, w_value, h_value)
-                    
-            #         # Process only moving objects
-            #         if class_id in mobile_object_ids: # or class_id in stationary_object_ids:
-            #             # class_name = class_names[class_id]
-            #             # class_type = 1  # Moving object
-
-            #             # Initialize location string
-            #             # Use the function to generate the location
-            #             location = generate_location((x_value, y_value, w_value, h_value), stationary_objects_bboxes, class_names)
-            #             print(location)
-
-            #             try:
-            #                 cursor.execute("SELECT * FROM detections WHERE tracker_id = %s", (track_id,))
-            #                 existing_record = cursor.fetchone()
-
-            #                 if existing_record:
-            #                     cursor.execute(
-            #                         "UPDATE detections SET class_id = %s, class_name = %s, class_type = %s, x = %s, y = %s, width = %s, height = %s, location = %s, timestamp = %s WHERE tracker_id = %s",
-            #                         (class_id, class_name, class_type, x_value, y_value, w_value, h_value, location, datetime.now(), track_id)
-            #                     )
-            #                 else:
-            #                     cursor.execute(
-            #                         "INSERT INTO detections (tracker_id, class_id, class_name, class_type, x, y, width, height, location, timestamp) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-            #                         (track_id, class_id, class_name, class_type, x_value, y_value, w_value, h_value, location, datetime.now())
-            #                     )
-            #                 db.commit()
-            #             except Error as e:
-            #                 print(f"Error interacting with database: {e}")
-
+            
         # Calculate and display the FPS
         fps = 1 / (new_frame_time - prev_frame_time)
         prev_frame_time = new_frame_time
