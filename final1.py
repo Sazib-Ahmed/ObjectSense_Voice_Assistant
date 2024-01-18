@@ -39,11 +39,10 @@ mobile_object_ids=(15,16,24,25,26,27,28,32,39,41,42,43,44,45,63,64,65,66,67,73,7
 # Define stationary object
 stationary_object_ids=(13,56,57,58,59,60,62,68,69,72)
 
-# Dictionary to hold the bounding boxes of stationary objects
-stationary_objects_bboxes = {}
+
 
 # Load the YOLOv8 model
-model = YOLO('../yolov8n-seg.pt')
+model = YOLO('../yolov8m-seg.pt')
 
 # Open the video file or webcam
 #video_path = 0
@@ -67,15 +66,21 @@ except Error as e:
     exit(1)
 
 
-
+detected_class_name = {}
 class_masks = {}
 mask_areas = {}
 bounding_boxes = {}
+# Dictionary to hold the bounding boxes of stationary objects
+stationary_objects_boxes = {}
+mobile_objects_boxes={}
 
 # Function to determine spatial relationship
 def determine_spatial_relationship(class1, boxes1, area1, class2, boxes2, area2):
+    #sep("in determine_spatial_relationship")
     for box1 in boxes1:
+        #sep("in box1")
         for box2 in boxes2:
+            #sep("in box2")
             x1, y1, x2, y2 = box1[:4]
             x3, y3, x4, y4 = box2[:4]
 
@@ -139,67 +144,72 @@ def do_bounding_boxes_overlap(box1, box2):
     return (x1 < x4 and x2 > x3) and (y1 < y4 and y2 > y3)
 
 # Function to process overlaps and determine spatial relationships
-def process_overlaps(class_masks, mask_areas, bounding_boxes):
-    for (class1, mask1), (class2, mask2) in combinations(class_masks.items(), 2):
-        overlap = mask1 & mask2
-        if torch.any(overlap):
-            area1 = mask_areas[class1]
-            area2 = mask_areas[class2]
-            overlap_area = torch.sum(overlap).item()
+def process_overlaps(class_name1, mask1, area1, bounding_boxes1, class_name2, mask2, area2, bounding_boxes2):
+    #sep("in process overlap")
+    overlap = mask1 & mask2
+    #print(overlap)
+    if torch.any(overlap):
+        #sep("overlap ditected")
+        overlap_area = torch.sum(overlap).item()
 
-            if area1 == 0 or area2 == 0:
-                continue
+        # if area1 == 0 or area2 == 0:
+        #     return f"No direct spatial relationship detected between {class_name1} and {class_name2}"
 
-            overlap_percentage_class1 = (overlap_area / area1) * 100 if area1 > 0 else 0
-            overlap_percentage_class2 = (overlap_area / area2) * 100 if area2 > 0 else 0
+        overlap_percentage_class1 = (overlap_area / area1) * 100 if area1 > 0 else 0
+        overlap_percentage_class2 = (overlap_area / area2) * 100 if area2 > 0 else 0
 
-            print(f"Overlap percentage for {class1}: {overlap_percentage_class1:.2f}%")
-            print(f"Overlap percentage for {class2}: {overlap_percentage_class2:.2f}%")
+        print(f"Overlap percentage for {class_name1}: {overlap_percentage_class1:.2f}%")
+        print(f"Overlap percentage for {class_name2}: {overlap_percentage_class2:.2f}%")
 
-            # if area2 > area1:
-            #     print(f"Overlap detected: {class1} is in front of {class2}")
-            # else:
-            #     print(f"Overlap detected: {class2} is in front of {class1}")
+        # Determine and print spatial relationship
+        spatial_relationship="spatial_relationship not working "
 
-            # Determine and print spatial relationship
-            spatial_relationship = determine_spatial_relationship(class1, bounding_boxes[class1], area1, class2, bounding_boxes[class2], area2)
-            print(spatial_relationship)
+        spatial_relationship = determine_spatial_relationship(class_name1, bounding_boxes1, area1, class_name2, bounding_boxes2, area2)
+        #print(spatial_relationship)
+        return spatial_relationship
+    else:
+        # Check for bounding box overlap if masks do not overlap
+        #sep("no overlap ditected")
+        if any(do_bounding_boxes_overlap(box1, box2) for box1 in bounding_boxes1 for box2 in bounding_boxes2):
+            #print(f"{class_name1} is near {class_name2}")
+            return f"{class_name1} is close to {class_name2}"
         else:
-            # Check for bounding box overlap if masks do not overlap
-            if any(do_bounding_boxes_overlap(box1, box2) for box1 in bounding_boxes[class1] for box2 in bounding_boxes[class2]):
-                print(f"{class1} is near {class2}")
+            #print(f"{class_name1} is near {class_name2}")
+            return f"{class_name1} is near {class_name2}"
 
-
-
-
-# Dictionary to hold the locations of mobile objects
-mobile_objects_locations = {}
 
 # Function to calculate distance between two points
-def calculate_distance(point1, point2):
-    x1, y1 = point1
-    x2, y2 = point2
-    return np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+# def calculate_distance(point1, point2):
+#     x1, y1 = point1
+#     x2, y2 = point2
+#     return np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
 # Function to find the nearest stationary object for a given mobile object
-def find_nearest_stationary_object(mobile_object_location, stationary_objects_locations):
-    min_distance = float('inf')
-    nearest_stationary_object = None
+def get_closest_stationary_object(mobile_object_boxes, stationary_object_boxes):
+    closest_stationary_objects = {}
 
-    for stationary_object, stationary_location in stationary_objects_locations.items():
-        distance = calculate_distance(mobile_object_location, stationary_location)
-        if distance < min_distance:
-            min_distance = distance
-            nearest_stationary_object = stationary_object
+    for mobile_track_id, mobile_box in mobile_object_boxes.items():
+        mobile_x, mobile_y, _, _ = mobile_box
 
-    return nearest_stationary_object
+        # Initialize variables to keep track of the closest stationary object
+        closest_stationary_track_id = None
+        min_distance = float('inf')
 
+        for stationary_track_id, stationary_box in stationary_object_boxes.items():
+            stationary_x, stationary_y, _, _ = stationary_box
 
+            # Calculate Euclidean distance between mobile and stationary objects
+            distance = np.sqrt((mobile_x - stationary_x)**2 + (mobile_y - stationary_y)**2)
 
+            # Update closest stationary object if distance is smaller
+            if distance < min_distance:
+                closest_stationary_track_id = stationary_track_id
+                min_distance = distance
 
+        # Save the closest stationary object for the current mobile object
+        closest_stationary_objects[mobile_track_id] = closest_stationary_track_id
 
-
-
+    return closest_stationary_objects
 
 
 # Loop through the video frames
@@ -214,39 +224,35 @@ while cap.isOpened():
 
         # Run YOLOv8 tracking on the frame
         results = model.track(frame, persist=True)
+        # Set dictionaries to null
+        detected_class_name = {}
+        class_masks = {}
+        mask_areas = {}
+        bounding_boxes = {}
+        stationary_objects_boxes = {}
+        mobile_objects_boxes = {}
         
 
         if results[0].boxes is not None and getattr(results[0].boxes, 'id', None) is not None:
-            #boxes = results[0].boxes.xywh.cpu()
+            boxes_xywh = results[0].boxes.xywh.cpu()
             masks = results[0].masks.data
             boxes = results[0].boxes.data
-            #track_ids = results[0].boxes.id.int().cpu().tolist()
+            track_ids_list = results[0].boxes.id.int().cpu().tolist()
             track_ids = results[0].boxes.id
-            #class_ids = results[0].boxes.cls.int().cpu().tolist()
+            class_ids_list = results[0].boxes.cls.int().cpu().tolist()
             class_ids = results[0].boxes.cls
 
             for i, track_id in enumerate(track_ids):
                 track_id = int(track_id)
-                print("Tracking ID:",track_id)
-                print(type(track_id))
                 class_id = class_ids[i].int().item()
-                print("Class ID:",class_id)
-                print(type(class_id))
                 class_name=class_names[class_id]
-                print("Clase Name:",class_name)
-                print(type(class_name))
-                if class_id in mobile_object_ids:
-                    print("Mobile object")
-                else:
-                    print("Stationary object")
-
-                seg_class = class_names[i]
+                detected_class_name[track_id]=class_name
                 obj_indices = torch.where(track_ids == track_id)
                 obj_masks = masks[obj_indices]
                 obj_mask = torch.any(obj_masks, dim=0).int() * 255
                 class_masks[track_id] = obj_mask
                 mask_areas[track_id] = torch.sum(obj_mask).item()
-                #cv2.imwrite(f'./test_output/{seg_class}s.jpg', obj_mask.cpu().numpy())
+                #cv2.imwrite(f'./test_output/{class_name}s.jpg', obj_mask.cpu().numpy())
 
                 # Extract bounding boxes
                 obj_bbox = boxes[obj_indices].squeeze(0)
@@ -254,22 +260,41 @@ while cap.isOpened():
                     bounding_boxes[track_id] = obj_bbox.unsqueeze(0)  # Add an extra dimension
                 else:
                     bounding_boxes[track_id] = obj_bbox
+                
+                x, y, w, h = boxes_xywh[i]
+                x_value = float(x)
+                y_value = float(y)
+                w_value = float(w)
+                h_value = float(h)
 
                 # Get the location of mobile objects
-                if i in mobile_object_ids:
-                    sep("IN if i ")
-                    print(i)
-                    mobile_object_location = (int((obj_bbox[0] + obj_bbox[2]) / 2), int((obj_bbox[1] + obj_bbox[3]) / 2))
-                    mobile_objects_locations[seg_class] = mobile_object_location
+                if class_id in mobile_object_ids:
+                    mobile_objects_boxes[track_id] = (x_value, y_value, w_value, h_value)
 
-            sep()
-            # Find the nearest stationary object for each mobile object
-            for mobile_object, mobile_location in mobile_objects_locations.items():
-                nearest_stationary_object = find_nearest_stationary_object(mobile_location, stationary_objects_bboxes)
-                print(f"{mobile_object} is near {nearest_stationary_object}")
+                if class_id in stationary_object_ids:
+                    stationary_objects_boxes[track_id] = (x_value, y_value, w_value, h_value)
+            
+        
 
-            sep()
-            process_overlaps(class_masks, mask_areas, bounding_boxes)
+            
+
+            closest_stationary_objects = get_closest_stationary_object(mobile_objects_boxes, stationary_objects_boxes)
+            for key, value in closest_stationary_objects.items():
+                #sep("######get location 0f #####")
+                #print(key, " : ", value)
+                #print(type(key), " : ", type(value))
+
+                #print(detected_class_name[key],class_masks[key], mask_areas[key], bounding_boxes[key],detected_class_name[value],class_masks[value], mask_areas[value], bounding_boxes[value])
+                sep("get location")
+                location = process_overlaps(detected_class_name[key],class_masks[key], mask_areas[key], bounding_boxes[key],detected_class_name[value],class_masks[value], mask_areas[value], bounding_boxes[value])
+                print(location)
+
+            print("Mobile object to closest stationary object mapping:", closest_stationary_objects)
+            
+            #process_overlaps(class_masks, mask_areas, bounding_boxes)
+            
+            
+            
             annotated_frame = results[0].plot()
             
         # Calculate and display the FPS
