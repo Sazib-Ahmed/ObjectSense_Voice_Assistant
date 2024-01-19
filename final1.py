@@ -93,14 +93,14 @@ def determine_spatial_relationship(class1, boxes1, area1, class2, boxes2, area2)
 
             if is_box1_inside_box2:
                 if area1 < area2:
-                    return f"{class1} is on {class2}"
+                    return "on"
                 else:
-                    return f"{class1} surrounds {class2}"
+                    return "surrounds"
             elif is_box2_inside_box1:
                 if area2 < area1:
-                    return f"{class2} is on {class1}"
+                    return "on"
                 else:
-                    return f"{class2} surrounds {class1}"
+                    return "surrounds"
 
             # Calculate overlap percentage
             overlap_width = min(x2, x4) - max(x1, x3)
@@ -114,26 +114,26 @@ def determine_spatial_relationship(class1, boxes1, area1, class2, boxes2, area2)
             if horizontal_overlap and vertical_overlap:
                 if overlap_area / min(area1, area2) > 0.5:  # Significant overlap
                     if area1 > area2:
-                        return f"{class1} is covering {class2}"
+                        return "covering"
                     else:
-                        return f"{class2} is covering {class1}"
+                        return "covering"
                 else:
                     if y1 < y3:
-                        return f"{class1} is above {class2}"
+                        return "above"
                     else:
-                        return f"{class1} is below {class2}"
+                        return "below"
             elif horizontal_overlap:
                 if size_difference > 0.5:
-                    return f"{class1} and {class2} are beside each other"
+                    return "beside"
                 else:
-                    return f"{class1} is beside {class2}"
+                    return "beside"
             elif vertical_overlap:
                 if size_difference > 0.5:
-                    return f"{class1} and {class2} are near each other"
+                    return "near"
                 else:
-                    return f"{class1} is near {class2}"
+                    return "near"
 
-    return f"No direct spatial relationship detected between {class1} and {class2}"
+    return "around"
 
 
 
@@ -145,21 +145,23 @@ def do_bounding_boxes_overlap(box1, box2):
 
 # Function to process overlaps and determine spatial relationships
 def process_overlaps(class_name1, mask1, area1, bounding_boxes1, class_name2, mask2, area2, bounding_boxes2):
-    #sep("in process overlap")
+    sep("29-1")
+
     overlap = mask1 & mask2
     #print(overlap)
     if torch.any(overlap):
+        sep("29-2")
         #sep("overlap ditected")
-        overlap_area = torch.sum(overlap).item()
+        #overlap_area = torch.sum(overlap).item()
 
         # if area1 == 0 or area2 == 0:
         #     return f"No direct spatial relationship detected between {class_name1} and {class_name2}"
 
-        overlap_percentage_class1 = (overlap_area / area1) * 100 if area1 > 0 else 0
-        overlap_percentage_class2 = (overlap_area / area2) * 100 if area2 > 0 else 0
+        # overlap_percentage_class1 = (overlap_area / area1) * 100 if area1 > 0 else 0
+        # overlap_percentage_class2 = (overlap_area / area2) * 100 if area2 > 0 else 0
 
-        print(f"Overlap percentage for {class_name1}: {overlap_percentage_class1:.2f}%")
-        print(f"Overlap percentage for {class_name2}: {overlap_percentage_class2:.2f}%")
+        # print(f"Overlap percentage for {class_name1}: {overlap_percentage_class1:.2f}%")
+        # print(f"Overlap percentage for {class_name2}: {overlap_percentage_class2:.2f}%")
 
         # Determine and print spatial relationship
         spatial_relationship="spatial_relationship not working "
@@ -168,14 +170,40 @@ def process_overlaps(class_name1, mask1, area1, bounding_boxes1, class_name2, ma
         #print(spatial_relationship)
         return spatial_relationship
     else:
-        # Check for bounding box overlap if masks do not overlap
-        #sep("no overlap ditected")
-        if any(do_bounding_boxes_overlap(box1, box2) for box1 in bounding_boxes1 for box2 in bounding_boxes2):
-            #print(f"{class_name1} is near {class_name2}")
-            return f"{class_name1} is close to {class_name2}"
+        # Calculate distance between bounding boxes
+        sep("29-3")
+        min_distance = float('inf')
+        for box1 in bounding_boxes1:
+            sep("29-4")
+            for box2 in bounding_boxes2:
+                sep("29-5")
+                x1, y1, _, _ = box1[:4]
+                sep("29-6")
+                x2, y2, _, _ = box2[:4]
+                sep("29-7")
+                distance = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+                sep("29-8")
+                min_distance = min(min_distance, distance)
+                sep("29-9")
+                sep(min_distance)
+            
+        sep("29-10")
+        if min_distance < 50:  # Adjust the threshold as needed
+            return "close to"
+        elif min_distance < 100:
+            return "near"
         else:
-            #print(f"{class_name1} is near {class_name2}")
-            return f"{class_name1} is near {class_name2}"
+            return "far from"
+        
+        
+        # # Check for bounding box overlap if masks do not overlap
+        # #sep("no overlap ditected")
+        # if any(do_bounding_boxes_overlap(box1, box2) for box1 in bounding_boxes1 for box2 in bounding_boxes2):
+        #     #print(f"{class_name1} is near {class_name2}")
+        #     return f"{class_name1} is close to {class_name2}"
+        # else:
+        #     #print(f"{class_name1} is near {class_name2}")
+        #     return f"{class_name1} is near {class_name2}"
 
 
 # Function to calculate distance between two points
@@ -235,63 +263,95 @@ while cap.isOpened():
 
         if results[0].boxes is not None and getattr(results[0].boxes, 'id', None) is not None:
             boxes_xywh = results[0].boxes.xywh.cpu()
+            sep("1")
             masks = results[0].masks.data
+            sep("2")
+
             boxes = results[0].boxes.data
+            sep("3")
             track_ids_list = results[0].boxes.id.int().cpu().tolist()
+            sep("4")
             track_ids = results[0].boxes.id
+            sep("5")
             class_ids_list = results[0].boxes.cls.int().cpu().tolist()
+            sep("6")
             class_ids = results[0].boxes.cls
+            sep("7")
 
             for i, track_id in enumerate(track_ids):
+                sep("8")
                 track_id = int(track_id)
+                sep("9")
                 class_id = class_ids[i].int().item()
+                sep("10")
                 class_name=class_names[class_id]
+                sep("11")
                 detected_class_name[track_id]=class_name
+                sep("12")
                 obj_indices = torch.where(track_ids == track_id)
+                sep("13")
                 obj_masks = masks[obj_indices]
+                sep("14")
                 obj_mask = torch.any(obj_masks, dim=0).int() * 255
+                sep("15")
                 class_masks[track_id] = obj_mask
+                sep("16")
                 mask_areas[track_id] = torch.sum(obj_mask).item()
+                sep("17")
                 #cv2.imwrite(f'./test_output/{class_name}s.jpg', obj_mask.cpu().numpy())
 
                 # Extract bounding boxes
                 obj_bbox = boxes[obj_indices].squeeze(0)
+                sep("18")
                 if obj_bbox.ndim == 1:  # In case squeezing leads to a 1D tensor
+                    sep("19")
                     bounding_boxes[track_id] = obj_bbox.unsqueeze(0)  # Add an extra dimension
+                    sep("20")
                 else:
+                    sep("21")
                     bounding_boxes[track_id] = obj_bbox
+                sep("22")
                 
                 x, y, w, h = boxes_xywh[i]
                 x_value = float(x)
                 y_value = float(y)
                 w_value = float(w)
                 h_value = float(h)
+                sep("23")
 
                 # Get the location of mobile objects
                 if class_id in mobile_object_ids:
+                    sep("24")
                     mobile_objects_boxes[track_id] = (x_value, y_value, w_value, h_value)
 
                 if class_id in stationary_object_ids:
+                    sep("25")
                     stationary_objects_boxes[track_id] = (x_value, y_value, w_value, h_value)
             
         
 
             
-
+            sep("26")
             closest_stationary_objects = get_closest_stationary_object(mobile_objects_boxes, stationary_objects_boxes)
-            for key, value in closest_stationary_objects.items():
-                #sep("######get location 0f #####")
-                #print(key, " : ", value)
-                #print(type(key), " : ", type(value))
+            sep("27")
+            # Check if closest_stationary_objects has values
+            if closest_stationary_objects:
+                sep("28")
+                for key, value in closest_stationary_objects.items():
+                    sep("29")
+                    #sep("######get location 0f #####")
+                    #print(key, " : ", value)
+                    #print(type(key), " : ", type(value))
 
-                #print(detected_class_name[key],class_masks[key], mask_areas[key], bounding_boxes[key],detected_class_name[value],class_masks[value], mask_areas[value], bounding_boxes[value])
-                sep("get location")
-                location = process_overlaps(detected_class_name[key],class_masks[key], mask_areas[key], bounding_boxes[key],detected_class_name[value],class_masks[value], mask_areas[value], bounding_boxes[value])
-                print(location)
+                    #print(detected_class_name[key],class_masks[key], mask_areas[key], bounding_boxes[key],detected_class_name[value],class_masks[value], mask_areas[value], bounding_boxes[value])
+                    #sep("get location")
+                    location = process_overlaps(detected_class_name[key],class_masks[key], mask_areas[key], bounding_boxes[key],detected_class_name[value],class_masks[value], mask_areas[value], bounding_boxes[value])
+                    sep("30")
+                    print(detected_class_name[key],key,location,detected_class_name[value],value)
 
-            print("Mobile object to closest stationary object mapping:", closest_stationary_objects)
-            
-            #process_overlaps(class_masks, mask_areas, bounding_boxes)
+                # print("Mobile object to closest stationary object mapping:", closest_stationary_objects)
+                
+                #process_overlaps(class_masks, mask_areas, bounding_boxes)
             
             
             
