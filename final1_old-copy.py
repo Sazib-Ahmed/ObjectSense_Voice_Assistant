@@ -433,18 +433,18 @@ while cap.isOpened():
                     #location = process_overlaps(detected_class_names[key],class_masks[key], mask_areas[key], bounding_boxes[key],detected_class_names[value],class_masks[value], mask_areas[value], bounding_boxes[value])
                     x_value, y_value, w_value, h_value = mobile_objects_boxes[mobile_object_track_id]
                     try:
-                        cursor.execute("SELECT * FROM detections WHERE mobile_object_tracker_id = %s", (mobile_object_track_id,))
+                        cursor.execute("SELECT * FROM detections WHERE tracker_id = %s", (mobile_object_track_id,))
                         existing_record = cursor.fetchone()
 
                         if existing_record:
                             cursor.execute(
-                                "UPDATE detections SET mobile_object_class_id = %s, mobile_object_class_name = %s, stationary_object_tracker_id = %s , stationary_object_class_id = %s, stationary_object_class_name = %s, x = %s, y = %s, width = %s, height = %s, location = %s, timestamp = %s WHERE mobile_object_tracker_id = %s",
-                                (detected_class_ids[mobile_object_track_id], detected_class_names[mobile_object_track_id],stationary_object_track_id,detected_class_ids[stationary_object_track_id], detected_class_names[stationary_object_track_id], x_value, y_value, w_value, h_value, location, datetime.now(), mobile_object_track_id)
+                                "UPDATE detections SET class_id = %s, class_name = %s, x = %s, y = %s, width = %s, height = %s, location = %s, timestamp = %s WHERE tracker_id = %s",
+                                (detected_class_ids[mobile_object_track_id], detected_class_names[mobile_object_track_id], x_value, y_value, w_value, h_value, location, datetime.now(), mobile_object_track_id)
                             )
                         else:
                             cursor.execute(
-                                "INSERT INTO detections (mobile_object_tracker_id, mobile_object_class_id, mobile_object_class_name, stationary_object_tracker_id, stationary_object_class_id, stationary_object_class_name, x, y, width, height, location, timestamp) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                                (mobile_object_track_id, detected_class_ids[mobile_object_track_id], detected_class_names[mobile_object_track_id],stationary_object_track_id,detected_class_ids[stationary_object_track_id], detected_class_names[stationary_object_track_id], x_value, y_value, w_value, h_value, location, datetime.now())
+                                "INSERT INTO detections (tracker_id, class_id, class_name, x, y, width, height, location, timestamp) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                                (mobile_object_track_id, detected_class_ids[mobile_object_track_id], detected_class_names[mobile_object_track_id], x_value, y_value, w_value, h_value, location, datetime.now())
                             )
                         db.commit()
                     except Error as e:
