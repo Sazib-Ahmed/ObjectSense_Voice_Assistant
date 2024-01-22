@@ -44,7 +44,7 @@ stationary_object_ids=(13,56,57,58,59,60,62,68,69,72)
 
 
 # Load the YOLOv8 model
-model = YOLO('../yolov8m-seg.pt')
+model = YOLO('../yolov8x-seg.pt')
 
 # Open the video file or webcam
 #video_path = 0
