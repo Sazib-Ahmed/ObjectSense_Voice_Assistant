@@ -53,35 +53,7 @@ def respond(text):
     tts.save("response.mp3")
     subprocess.run(["afplay", "response.mp3"])  # Use afplay for audio playback on macOS
 
-
-# Helper function to respond with location information
-def respond_location_results(results, object_type, object_identifier=None):
-    if results:
-        num_objects = len(results)
-        object_descriptions = []
-
-        for result in results:
-            location = result[7]
-            if location is not None:
-                object_descriptions.append(f"{location} the {result[6]}")
-
-        if num_objects == 1:
-            if object_type=="tracker_id":
-                respond(f"I have seen the tracker ID {object_identifier}. I can see that it's a {result[3]} and it's {object_descriptions[0]}.")
-            elif object_identifier != None:
-                respond(f"I have seen {object_type} {object_identifier} {object_descriptions[0]}.")
-            else:
-                respond(f"I have seen {object_type} {object_descriptions[0]}.")
-        elif num_objects > 1:
-            respond(f"I have seen {num_objects} {object_type}s. ")
-            for i in range(num_objects):
-                respond(f"One is {object_descriptions[i]}.")
-        else:
-            respond(f"I haven't seen any {object_type}.")
-    else:
-        respond(f"I haven't seen any {object_type}.")
-
-def check_location(tracker_id=None, obj_class=None, type=None):
+def check_location(tracker_id=None,obj_class=None,type=None):
     try:
         connection = mysql.connector.connect(
             host="127.0.0.1",
@@ -90,10 +62,12 @@ def check_location(tracker_id=None, obj_class=None, type=None):
             database="assistant"
         )
         cursor = connection.cursor()
+        sep()
         if tracker_id is not None and obj_class is None and type == "id":
             cursor.execute("SELECT * FROM detections WHERE mobile_object_tracker_id = %s", (tracker_id,))
-            results = cursor.fetchall()  # Fetch all rows
+            results = cursor.fetchone()  # Fetch one rows
         elif tracker_id is None and obj_class is not None and type == "class":
+            #cursor.execute("SELECT * FROM detections WHERE mobile_object_class_name = %s", (obj_class,))
             cursor.execute("""
                 SELECT *
                 FROM detections
@@ -102,14 +76,21 @@ def check_location(tracker_id=None, obj_class=None, type=None):
                 ORDER BY stationary_object_class_id, MAX(timestamp) DESC
                 """, (obj_class,))
 
-            results = cursor.fetchall()  # Fetch all rows
+
+            results = cursor.fetchall()  # Fetch one rows
         elif tracker_id is None and obj_class is None and type == "all":
             cursor.execute("SELECT * FROM detections")
             results = cursor.fetchall()  # Fetch all rows
         else:
-            return None
+            return False
 
-        return results
+        if results:
+            # for result in results:
+            #     print(result)
+            # sep()
+            return results  # Return the fetched data as a list of tuples
+        else:
+            return None  # Return None if no data is found
 
     except mysql.connector.Error as error:
         print("Error:", error)
@@ -189,10 +170,11 @@ def main():
     while True:
         command = listen_for_command()
 
-        triggerKeywords = ["assistant", "tracker", "seen", "id", "have you"]
+        triggerKeyword = "assistant"
         print("Received command:", command)
 
-        if command and any(keyword in command for keyword in triggerKeywords):
+        if command and triggerKeyword in command:
+            print("in triggerKeyword")
             if listeningToTask:
                 tasks.append(command)
                 listeningToTask = False
@@ -212,11 +194,15 @@ def main():
                 respond("Opening Chrome.")
                 webbrowser.open("http://www.youtube.com/@JakeEh")
             elif "tracker" in command and "id" in command:
+                print("Checking tracker ID command")
                 parts = command.split()
                 index_tracker_id = parts.index("tracker") + 2  # Adjusted index to get the part after "tracker"
+                print("Tracker ID index:", index_tracker_id)
 
                 if len(parts) > index_tracker_id:
                     raw_tracker_id = parts[index_tracker_id].lower()  # Convert to lowercase for case-insensitive matching
+                    print("Raw tracker ID:", raw_tracker_id)
+                    print(type(raw_tracker_id))
                     try:
                         tracker_id=int(raw_tracker_id)
                     except ValueError:
@@ -224,25 +210,46 @@ def main():
 
                     # Use the text2int function to convert words to numbers
                     # tracker_id = text2int(raw_tracker_id)
+                    print(tracker_id)
 
                     if tracker_id is not None:
-                        # Use the provided query to get the object locations for the given tracker ID
-                        results = check_location(tracker_id,None,"id")
-                        respond_location_results(results, "tracker_id", raw_tracker_id)
+                        if check_location(tracker_id):
+                            respond("Yes, I have seen tracker ID " + str(raw_tracker_id))
+                        else:
+                            respond("No, I have not seen tracker ID " + str(raw_tracker_id))
                     else:
                         respond("I'm sorry, I couldn't convert the tracker ID to a number.")
                 else:
                     respond("I'm not sure how to handle that command.")
 
-            elif any(keyword in command for keyword in ["seen", "saw", "know"]):
+            elif "seen" in command or "saw" in command or "know" in command:
+                print("Checking class command")
                 for class_name in class_names:
                     if class_name.lower() in command.lower():
-                        # Use the provided query to get the object locations for the given class name
-                        results = check_location(None, class_name, "class")
-                        respond_location_results(results, class_name)
-                    # else:
-                    #     respond("I'm sorry, I did not get the object name.")
-                    
+                        results = check_location(None, class_name, "class")  # Use the provided query to get the object locations
+
+                        if results:
+                            num_objects = len(results)
+                            object_descriptions = []
+
+                            for result in results:
+                                location = result[7]
+                                if location is not None:
+                                    object_descriptions.append(f"{location} the {result[6]}")
+
+                            if num_objects == 1:
+                                respond(f"I saw a {class_name} {object_descriptions[0]}.")
+                            elif num_objects > 1:
+                                respond(f"I saw {num_objects} {class_name}s. ")
+                                for i in range(num_objects):
+                                    respond(f"One is {object_descriptions[i]}.")
+                            else:
+                                respond(f"I haven't seen any {class_name}.")
+                        else:
+                            respond(f"I haven't seen any {class_name}.")
+                    else:
+                        respond("I'm sorry, I did not get the object name.")
+            
             elif "exit" in command:
                 respond("Goodbye!")
                 break
@@ -250,13 +257,13 @@ def main():
                 respond("Sorry, I'm not sure how to handle that command.")
 
 if __name__ == "__main__":
-    respond("Online")
-    main()
+    # respond("Online")
+    #main()
     
-    # id_result = check_location(3,None,"id")
-    # print(id_result)
-    # print(check_location(None,"bottle","class"))
-    # print(check_location(None,"book","class"))
+    id_result = check_location(3,None,"id")
+    print(id_result)
+    print(check_location(None,"bottle","class"))
+    print(check_location(None,"book","class"))
 
-    # print(check_location(None,None,"all"))
+    print(check_location(None,None,"all"))
 

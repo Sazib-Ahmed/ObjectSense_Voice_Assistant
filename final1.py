@@ -254,7 +254,7 @@ def check_relative_position(mobile_box, stationary_box):
                 return f"Nearby"
             
             else:
-                return "Far away"
+                return "Far away from"
 
     
 # Function to process overlaps and determine spatial relationships
