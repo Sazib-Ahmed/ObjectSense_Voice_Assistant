@@ -44,10 +44,10 @@ stationary_object_ids=(13,56,57,58,59,60,62,68,69,72)
 
 
 # Load the YOLOv8 model
-model = YOLO('../yolov8x-seg.pt')
+model = YOLO('../yolov8m-seg.pt')
 
 # Open the video file or webcam
-#video_path = 0
+video_path = 0
 video_path = '../Sequence01.mp4'
 try:
     cap = cv2.VideoCapture(video_path)
