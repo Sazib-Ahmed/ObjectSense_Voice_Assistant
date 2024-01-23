@@ -198,6 +198,42 @@ def calculate_line_distance(line1, line2):
     return distance
 
 
+# def get_relative_position(box1, box2, distances):
+#     x1, y1, w1, h1 = box1[:4].detach().numpy()
+#     x2, y2, w2, h2 = box2[:4].detach().numpy()
+
+#     if not distances:
+#         return "No distance information available"
+#     sep("in get_relative_position")
+#     print(distances)
+#     print(x1,y1)
+#     print(x2,y2)
+
+
+#     corners1 = [(x1, y1), (x1 + w1, y1), (x1, y1 + h1), (x1 + w1, y1 + h1)]
+#     corners2 = [(x2, y2), (x2 + w2, y2), (x2, y2 + h2), (x2 + w2, y2 + h2)]
+
+#     min_distance = min(distances)
+
+#     if min_distance < 0.1 * min(w1, h1, w2, h2):
+#         return "in front of"
+    
+#     # Calculate the direction of the closest corner of box2 from the center of box1
+#     closest_corner = corners2[distances.index(min_distance)]
+#     center1_x = x1 + w1 / 2
+#     center1_y = y1 + h1 / 2
+
+#     if closest_corner[0] < center1_x - w1 / 4:
+#         return "left of"
+#     elif closest_corner[0] > center1_x + w1 / 4:
+#         return "right of"
+#     elif closest_corner[1] < center1_y - h1 / 4:
+#         return "above"
+#     elif closest_corner[1] > center1_y + h1 / 4:
+#         return "below"
+#     else:
+#         return "in front of"
+
 def check_relative_position(mobile_box, stationary_box):
     close_threshold = 200
     nearby_threshold = 500
@@ -227,6 +263,16 @@ def process_overlaps( mask1, area1, bounding_boxes1, mask2, area2, bounding_boxe
     overlap = mask1 & mask2
     #print(overlap)
     if torch.any(overlap):
+        #overlap_area = torch.sum(overlap).item()
+
+        # if area1 == 0 or area2 == 0:
+        #     return f"No direct spatial relationship detected between {class_name1} and {class_name2}"
+
+        # overlap_percentage_class1 = (overlap_area / area1) * 100 if area1 > 0 else 0
+        # overlap_percentage_class2 = (overlap_area / area2) * 100 if area2 > 0 else 0
+
+        # print(f"Overlap percentage for {class_name1}: {overlap_percentage_class1:.2f}%")
+        # print(f"Overlap percentage for {class_name2}: {overlap_percentage_class2:.2f}%")
 
         # Determine and print spatial relationship
         spatial_relationship="Overlap spatial relationship not working "
@@ -246,6 +292,45 @@ def process_overlaps( mask1, area1, bounding_boxes1, mask2, area2, bounding_boxe
         return relative_position
 
 
+
+        # # Assuming bounding_boxes1 and bounding_boxes2 are lists of tensors
+        # min_distance = float('inf')
+
+        # for box1 in bounding_boxes1:
+        #     for box2 in bounding_boxes2:
+        #         x1, y1, _, _ = box1[:4].detach().numpy()  # Convert tensor to numpy array
+        #         x2, y2, _, _ = box2[:4].detach().numpy()  # Convert tensor to numpy array
+        #         print(x1)
+        #         print(y1)
+        #         print(x2)
+        #         print(y2)
+        #         # Calculate Euclidean distance using tensor operations
+        #         distance = torch.sqrt((torch.tensor(x2) - torch.tensor(x1))**2 + (torch.tensor(y2) - torch.tensor(y1))**2)
+
+        #         min_distance = min(min_distance, distance.item())
+            
+        # if min_distance < 50:  # Adjust the threshold as needed
+        #     return "close to"
+        # elif min_distance < 100:
+        #     return "near"
+        # else:
+        #     return "far from"
+        
+        
+        # # Check for bounding box overlap if masks do not overlap
+        # if any(do_bounding_boxes_overlap(box1, box2) for box1 in bounding_boxes1 for box2 in bounding_boxes2):
+        #     #print(f"{class_name1} is near {class_name2}")
+        #     return f"{class_name1} is close to {class_name2}"
+        # else:
+        #     #print(f"{class_name1} is near {class_name2}")
+        #     return f"{class_name1} is near {class_name2}"
+
+
+# Function to calculate distance between two points
+# def calculate_distance(point1, point2):
+#     x1, y1 = point1
+#     x2, y2 = point2
+#     return np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
 # Function to find the nearest stationary object for a given mobile object
 def get_closest_stationary_object(mobile_object_boxes, stationary_object_boxes):
