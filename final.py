@@ -194,6 +194,7 @@ def process_overlaps(class_masks, mask_areas, bounding_boxes):
             #     print(f"Overlap detected: {class2} is in front of {class1}")
 
             # Determine and print spatial relationship
+            spatial_relationship="spatial_relationship not working "
             spatial_relationship = determine_spatial_relationship(class1, bounding_boxes[class1], area1, class2, bounding_boxes[class2], area2)
             print(spatial_relationship)
         else:
@@ -243,6 +244,9 @@ while cap.isOpened():
                     bounding_boxes[seg_class] = obj_bbox
 
             process_overlaps(class_masks, mask_areas, bounding_boxes)
+            print(class_masks)
+            print(mask_areas)
+            print(bounding_boxes)
             annotated_frame = results[0].plot()
 
             # for box, track_id, class_id in zip(boxes, track_ids, class_ids):
