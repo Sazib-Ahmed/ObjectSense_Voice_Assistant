@@ -48,7 +48,7 @@ model = YOLO('../yolov8m-seg.pt')
 
 # Open the video file or webcam
 video_path = 0
-video_path = '../Sequence01.mp4'
+#video_path = '../Sequence01.mp4'
 try:
     cap = cv2.VideoCapture(video_path)
 except Exception as e:
