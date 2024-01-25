@@ -340,8 +340,9 @@ while cap.isOpened():
                 if class_id in stationary_object_ids:
                     stationary_objects_boxes[track_id] = (x_value, y_value, w_value, h_value)
             
-            closest_stationary_objects = get_closest_stationary_object(mobile_objects_boxes, stationary_objects_boxes)
-            # Check if closest_stationary_objects has values
+            if mobile_objects_boxes and stationary_objects_boxes:
+                closest_stationary_objects = get_closest_stationary_object(mobile_objects_boxes, stationary_objects_boxes)
+                # Check if closest_stationary_objects has values
             if closest_stationary_objects:
                 for mobile_object_track_id, stationary_object_track_id in closest_stationary_objects.items():
                     location = process_overlaps(class_masks[mobile_object_track_id], mask_areas[mobile_object_track_id], bounding_boxes[mobile_object_track_id],class_masks[stationary_object_track_id], mask_areas[stationary_object_track_id], bounding_boxes[stationary_object_track_id])
