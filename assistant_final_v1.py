@@ -48,7 +48,8 @@ def listen_for_command():
         return None
 
 def respond(text):
-    print("Showing and telling:", text)
+    print("Assistant Said:", text)
+    sep()
     tts = gTTS(text=text, lang='en')
     tts.save("response.mp3")
     subprocess.run(["afplay", "response.mp3"])  # Use afplay for audio playback on macOS
@@ -118,6 +119,32 @@ def check_location(tracker_id=None, obj_class=None, type=None):
         if connection.is_connected():
             cursor.close()
             connection.close()
+
+def clear_database():
+    try:
+        connection = mysql.connector.connect(
+            host="127.0.0.1",
+            user="root",
+            password="",
+            database="assistant"
+        )
+        cursor = connection.cursor()
+
+        cursor.execute("DELETE FROM detections")
+        connection.commit()
+
+        respond("Cleared all data from the database!")
+
+    except mysql.connector.Error as error:
+        print("Error:", error)
+        respond("An error occurred while clearing the database.")
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+
 
 def is_number(x):
     if type(x) == str:
@@ -190,7 +217,7 @@ def main():
         command = listen_for_command()
 
         triggerKeywords = ["assistant", "tracker", "seen", "id", "have you"]
-        print("Received command:", command)
+        #print("Received command:", command)
 
         if command and any(keyword in command for keyword in triggerKeywords):
             if listeningToTask:
@@ -243,6 +270,8 @@ def main():
                     # else:
                     #     respond("I'm sorry, I did not get the object name.")
                     
+            elif "clear the database" in command:
+                clear_database()
             elif "exit" in command:
                 respond("Goodbye!")
                 break

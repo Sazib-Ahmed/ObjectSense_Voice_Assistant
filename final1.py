@@ -59,6 +59,10 @@ except Exception as e:
 track_history = defaultdict(lambda: [])
 prev_frame_time = 0
 
+# Define the desired frame rate (5 frames per second)
+desired_fps = 10
+frame_delay = 1 / desired_fps
+
 # Connect to the database
 try:
     db = connect(host="localhost", user="root", password="", database="assistant")
@@ -281,6 +285,8 @@ while cap.isOpened():
         success, frame = cap.read()
         if not success:
             print("Failed to grab frame")
+            cap.release()
+            cv2.destroyAllWindows()
             break
 
         new_frame_time = time.time()
@@ -294,6 +300,7 @@ while cap.isOpened():
         bounding_boxes = {}
         stationary_objects_boxes = {}
         mobile_objects_boxes = {}
+        closest_stationary_objects = {}
         
 
         if results[0].boxes is not None and getattr(results[0].boxes, 'id', None) is not None:
@@ -390,6 +397,9 @@ while cap.isOpened():
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
+    
+        # Introduce delay to achieve the desired frame rate
+        time.sleep(frame_delay)
     except Exception as e:
         print(f"An error occurred during video processing: {e}")
 
