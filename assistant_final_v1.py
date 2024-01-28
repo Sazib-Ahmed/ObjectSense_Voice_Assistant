@@ -204,10 +204,6 @@ def text2int(textnum, numwords={}):
 
     return result
 
-# Rest of your code...
-
-tasks = []
-listeningToTask = False
 
 def main():
     global tasks
@@ -220,24 +216,9 @@ def main():
         #print("Received command:", command)
 
         if command and any(keyword in command for keyword in triggerKeywords):
-            if listeningToTask:
-                tasks.append(command)
-                listeningToTask = False
-                respond("Added")
-            elif "add a task" in command:
-                listeningToTask = True
-                respond("Sure, what is the task?")
-            elif "list tasks" in command:
-                respond("Sure. Your tasks are:")
-                for task in tasks:
-                    respond(task)
-            elif "take a screenshot" in command:
-                screenshot = pyautogui.screenshot()
-                screenshot.save("screenshot.png")
-                respond("I took a screenshot for you.")
-            elif "open chrome" in command:
-                respond("Opening Chrome.")
-                webbrowser.open("http://www.youtube.com/@JakeEh")
+            if "show the database" in command:
+                respond("Opening browser.")
+                webbrowser.open("http://localhost/phpmyadmin/index.php?route=/sql&pos=0&db=assistant&table=detections")
             elif "tracker" in command and "id" in command:
                 parts = command.split()
                 index_tracker_id = parts.index("tracker") + 2  # Adjusted index to get the part after "tracker"
@@ -261,7 +242,7 @@ def main():
                 else:
                     respond("I'm not sure how to handle that command.")
 
-            elif any(keyword in command for keyword in ["seen", "saw", "know"]):
+            elif any(keyword in command for keyword in ["seen", "saw", "know", "where"]):
                 for class_name in class_names:
                     if class_name.lower() in command.lower():
                         # Use the provided query to get the object locations for the given class name
@@ -279,7 +260,7 @@ def main():
                 respond("Sorry, I'm not sure how to handle that command.")
 
 if __name__ == "__main__":
-    respond("Online")
+    respond("Assistant Online")
     main()
     
     # id_result = check_location(3,None,"id")
