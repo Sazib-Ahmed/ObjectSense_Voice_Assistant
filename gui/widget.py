@@ -1,12 +1,18 @@
 # gui/widget.py
 import cv2
 from threading import Thread
-import queue
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QSlider,QGroupBox,QComboBox,QRadioButton, QFileDialog, QFrame, QWidget, QLabel, QVBoxLayout, QPushButton, QTabWidget, QLineEdit, QHBoxLayout, QSizePolicy, QGridLayout
+from PySide6.QtWidgets import (
+    QSlider, QGroupBox, QComboBox, QRadioButton, QFileDialog, QFrame,
+    QWidget, QLabel, QVBoxLayout, QPushButton, QTabWidget, QLineEdit,
+    QHBoxLayout, QSizePolicy, QGridLayout
+)
 from core.video_processing import process_video
 from .video_processing_thread import VideoProcessingThread
+from core.assistant import *
+from .assistant_thread import AssistantThread
+
 class Widget(QWidget):
     def __init__(self):
         super().__init__()
@@ -28,12 +34,12 @@ class Widget(QWidget):
         self.detection_video_display = QLabel("Video")
         self.detection_video_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.detection_video_display.setAlignment(Qt.AlignCenter)
-        detection_grid_layout.addWidget(self.detection_video_display, 1, 0, 4, 4) 
+        detection_grid_layout.addWidget(self.detection_video_display, 1, 0, 4, 4)
 
         # Radio Buttons for Video Source
         self.video_file_radio = QRadioButton("Video File:")
         self.live_video_radio = QRadioButton("Live Video:")
-        # Set "Live Video" as default selected
+        # Set "Live Video" as the default selected
         self.live_video_radio.setChecked(True)
 
         # Connect signals to slots
@@ -60,9 +66,7 @@ class Widget(QWidget):
         if self.video_inputs:
             self.video_input_combobox.setCurrentIndex(0)
 
-
         detection_model_label = QLabel("YOLOv8 Model Size:")
-        # detection_model_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         detection_model_label.setAlignment(Qt.AlignCenter)
         self.detection_model_combobox = QComboBox()
         self.detection_model_combobox.addItems(["Nano", "Small", "Medium", "Large", "Extra Large"])
@@ -90,8 +94,7 @@ class Widget(QWidget):
         detection_tracker_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         detection_tracker_label.setAlignment(Qt.AlignCenter)
 
-        #Radio buttons : answers
-        # answers = QGroupBox("Choose Answer")
+        # Radio buttons : answers
         detection_tracker_bot = QRadioButton("BoT-SORT")
         detection_tracker_byte = QRadioButton("ByteTrack ")
         detection_tracker_bot.setChecked(True)
@@ -99,18 +102,17 @@ class Widget(QWidget):
         detection_tracker_layout = QHBoxLayout()
         detection_tracker_layout.addWidget(detection_tracker_bot)
         detection_tracker_layout.addWidget(detection_tracker_byte)
-        # answers.setLayout(answers_layout)
 
         # Slider for Confidence Threshold
         confidence_label = QLabel("Confidence Threshold:")
         confidence_slider = QSlider(Qt.Horizontal)
         confidence_slider.setMinimum(10)  # minimum value * 10
         confidence_slider.setMaximum(100)  # maximum value * 10
-        confidence_slider.setValue(50)  # default value, 0.5 as percentage
+        confidence_slider.setValue(50)  # default value, 0.5 as a percentage
         confidence_slider.setTickPosition(QSlider.TicksBelow)
         confidence_slider.setTickInterval(10)
 
-        confidence_value_label = QLabel(str(confidence_slider.value() / 100.0))  # Initial value as string
+        confidence_value_label = QLabel(str(confidence_slider.value() / 100.0))  # Initial value as a string
         confidence_value_label.setFixedWidth(40)  # Set a fixed width to avoid length change
         confidence_slider.valueChanged.connect(lambda value: confidence_value_label.setText(str(value / 100.0)))
 
@@ -123,11 +125,11 @@ class Widget(QWidget):
         iou_slider = QSlider(Qt.Horizontal)
         iou_slider.setMinimum(10)  # minimum value * 10
         iou_slider.setMaximum(100)  # maximum value * 10
-        iou_slider.setValue(50)  # default value, 0.5 as percentage
+        iou_slider.setValue(50)  # default value, 0.5 as a percentage
         iou_slider.setTickPosition(QSlider.TicksBelow)
         iou_slider.setTickInterval(10)
 
-        iou_value_label = QLabel(str(iou_slider.value() / 100.0))  # Initial value as string
+        iou_value_label = QLabel(str(iou_slider.value() / 100.0))  # Initial value as a string
         iou_value_label.setFixedWidth(40)  # Set a fixed width to avoid length change
         iou_slider.valueChanged.connect(lambda value: iou_value_label.setText(str(value / 100.0)))
 
@@ -166,9 +168,8 @@ class Widget(QWidget):
                 background-color: #45a049; /* Darker Green */
             }
         """)
-        
 
-        # Add layouts to detection grid
+        # Add layouts to the detection grid
         detection_grid_layout.addWidget(self.video_file_radio, 5, 0)
         detection_grid_layout.addLayout(file_input_layout, 5, 1, 1, 3)
         detection_grid_layout.addWidget(self.live_video_radio, 6, 0)
@@ -198,10 +199,51 @@ class Widget(QWidget):
         assistant_label.setAlignment(Qt.AlignCenter)
         assistant_grid_layout.addWidget(assistant_label, 0, 0, 1, 3)  # Set column span to 3
 
-        assistant_conversation_label = QLabel("Conversation")
-        assistant_conversation_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        assistant_conversation_label.setAlignment(Qt.AlignCenter)
-        assistant_grid_layout.addWidget(assistant_conversation_label, 1, 0, 4, 4)
+        self.assistant_conversation_label = QLabel("Conversation")
+        self.assistant_conversation_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.assistant_conversation_label.setAlignment(Qt.AlignCenter)
+        assistant_grid_layout.addWidget(self.assistant_conversation_label, 1, 0, 4, 4)
+
+        # Create an instance of AssistantUpdater
+        self.assistant_updater = AssistantThread()
+
+        # Connect the signal to the slot for updating the GUI
+        self.assistant_updater.update_signal.connect(self.update_assistant_conversation)
+
+
+        # Start/Stop Button
+        self.assistant_start_stop_button = QPushButton("Start")
+        self.assistant_start_stop_button.clicked.connect(self.assistant_start_stop_process)
+        self.process_running = False  # Variable to track process state
+
+        # Set a professional-looking style sheet for the button
+        self.assistant_start_stop_button.setStyleSheet("""
+            QPushButton {
+                color: white;
+                border: 1px solid #4CAF50;
+                border-radius: 4px;
+                padding: 6px;
+            }
+            QPushButton:hover {
+                background-color: #45a049; /* Darker Green */
+            }
+            QPushButton[stopped="false"] {
+                background-color: #FF0000; /* Red */
+                border: 1px solid #FF0000;
+            }
+            QPushButton[stopped="false"]:hover {
+                background-color: #D70000; /* Darker Red */
+            }
+            QPushButton[stopped="true"] {
+                background-color: #4CAF50; /* Green */
+                border: 1px solid #4CAF50;
+            }
+            QPushButton[stopped="true"]:hover {
+                background-color: #45a049; /* Darker Green */
+            }
+        """)
+
+        assistant_grid_layout.addWidget(self.assistant_start_stop_button, 12, 0, 1, 4)  # Add start/stop button
 
         # Application Layout with Separator
         application_layout = QHBoxLayout()
@@ -210,7 +252,7 @@ class Widget(QWidget):
         application_layout.addLayout(assistant_grid_layout)
         application_widget.setLayout(application_layout)
 
-        # Add tabs to widget
+        # Add tabs to the widget
         tab_widget.addTab(application_widget, "Application")
 
         layout = QVBoxLayout()
@@ -230,8 +272,6 @@ class Widget(QWidget):
         else:
             self.video_file_radio.setChecked(False)
 
-
-
     def browse_file(self):
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(self, "Select Video File", "", "Video Files (*.mp4 *.avi)")
@@ -241,7 +281,7 @@ class Widget(QWidget):
     def get_available_video_inputs(self):
         # Use OpenCV to get available video inputs (webcams)
         available_inputs = []
-        for i in range(10):  # Check up to 10 video inputs
+        for i in range(5):  # Check up to 5 video inputs
             cap = cv2.VideoCapture(i)
             if cap.isOpened():
                 available_inputs.append(f"Camera {i}")
@@ -256,6 +296,7 @@ class Widget(QWidget):
             self.process_running = False
             self.start_stop_button.setProperty("stopped", "true")
             self.start_stop_button.setText("Start")
+            self.stop_video_thread()
             print("Process Stopped")
             # Add logic to stop the process (replace print statement with your logic)
         else:
@@ -272,6 +313,13 @@ class Widget(QWidget):
 
         # Update style to apply changes
         self.start_stop_button.style().polish(self.start_stop_button)
+
+    def stop_video_thread(self):
+        if hasattr(self, 'video_thread') and self.video_thread.isRunning():
+            self.video_thread.stop()
+            self.video_thread.wait()
+
+
 
     def on_video_processing_finished(self):
         # This method is called when the video processing thread finishes
@@ -300,3 +348,74 @@ class Widget(QWidget):
         # Set the QPixmap as the label's pixmap
         self.detection_video_display.setPixmap(pixmap)
 
+    # def press_hold_assistant(self):
+    #     if self.press_hold_button.isChecked():
+    #         print("Press and Hold Assistant button is pressed and held")
+    #         # Add logic for press and hold assistant action (e.g., activate voice recognition)
+    #     else:
+    #         print("Press and Hold Assistant button is released")
+    #         # Add logic for releasing press and hold assistant action (e.g., deactivate voice recognition)
+
+    # def start_stop_assistant(self):
+    #     if self.start_stop_assistant_button.isChecked():
+    #         print("Start Assistant button pressed")
+    #         # Add logic for starting the assistant (e.g., start processing voice commands)
+    #     else:
+    #         print("Stop Assistant button pressed")
+    #         # Add logic for stopping the assistant (e.g., stop processing voice commands)
+
+# Inside Widget class
+    def assistant_start_stop_process(self):
+        if self.process_running:
+            # If the process is running, stop it
+            self.process_running = False
+            self.assistant_start_stop_button.setProperty("stopped", "true")
+            self.assistant_start_stop_button.setText("Start")
+            self.stop_assistant_thread()
+            print("Assistant Stopped")
+            # Add logic to stop the assistant (replace print statement with your logic)
+        else:
+            # If the process is stopped, start it
+            self.process_running = True
+            self.assistant_start_stop_button.setProperty("stopped", "false")
+            self.assistant_start_stop_button.setText("Stop")
+            print("Assistant Started")
+
+            # Run the assistant functionality in a separate thread
+            self.assistant_thread = Thread(target=self.run_assistant)
+            self.assistant_thread.start()
+
+    def stop_assistant_thread(self):
+        if hasattr(self, 'assistant_thread') and self.assistant_thread.is_alive():
+            self.process_running = False
+            self.assistant_thread.join()
+
+    def run_assistant(self):
+        while self.process_running:
+            command = listen_for_command()
+
+            if command:
+                # Display the command in the assistant_conversation_label
+                self.update_assistant_conversation(f"User: {command}")
+
+                # Process the command and generate a response
+                response = self.process_command(command)
+
+                # Update the GUI using the signal
+                self.assistant_updater.update_assistant_conversation(f"User: {command}")
+                self.assistant_updater.update_assistant_conversation(f"Assistant: {response}")
+
+
+    def update_assistant_conversation(self, text):
+        # Safely update the assistant_conversation_label in the main thread
+        self.assistant_conversation_label.setAlignment(Qt.AlignTop)
+        self.assistant_conversation_label.setText(f"{self.assistant_conversation_label.text()}\n{text}")
+        self.assistant_conversation_label.repaint()
+        self.assistant_conversation_label.setAlignment(Qt.AlignCenter)
+        
+    def process_command(self, command):
+        # Add your logic here to process the user's command and generate a response
+        # For example, you can use the existing functions like check_location and respond
+
+        # For demonstration purposes, I'll just echo the command
+        return f"You said: {command}"

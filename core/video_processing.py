@@ -413,6 +413,12 @@ def process_video(video_path, widget_instance, frame_callback=None):
             # Send the annotated frame to the GUI using the callback
             # if frame_callback:
             widget_instance.display_video_frame(annotator)
+            # Emit the frame_processed signal
+            frame_callback(annotator)
+
+            # Check the stopped flag and exit the loop if needed
+            if widget_instance.video_thread.stopped:
+                break
 
             # Introduce delay to achieve the desired frame rate
             #time.sleep(frame_delay)
