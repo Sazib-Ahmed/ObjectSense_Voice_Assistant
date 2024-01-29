@@ -1,7 +1,10 @@
 # gui/widget.py
-import cv2 
+import cv2
+from threading import Thread
+import queue
+from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QGroupBox,QComboBox,QRadioButton, QFileDialog, QFrame, QWidget, QLabel, QVBoxLayout, QPushButton, QTabWidget, QLineEdit, QHBoxLayout, QSizePolicy, QGridLayout
+from PySide6.QtWidgets import QSlider,QGroupBox,QComboBox,QRadioButton, QFileDialog, QFrame, QWidget, QLabel, QVBoxLayout, QPushButton, QTabWidget, QLineEdit, QHBoxLayout, QSizePolicy, QGridLayout
 
 class Widget(QWidget):
     def __init__(self):
@@ -87,17 +90,84 @@ class Widget(QWidget):
         detection_tracker_label.setAlignment(Qt.AlignCenter)
 
         #Radio buttons : answers
-        answers = QGroupBox("Choose Answer")
-        answer_a = QRadioButton("A")
-        answer_b = QRadioButton("B")
-        answer_c = QRadioButton("C")
-        answer_a.setChecked(True)
+        # answers = QGroupBox("Choose Answer")
+        detection_tracker_bot = QRadioButton("BoT-SORT")
+        detection_tracker_byte = QRadioButton("ByteTrack ")
+        detection_tracker_bot.setChecked(True)
 
-        answers_layout = QHBoxLayout()
-        answers_layout.addWidget(answer_a)
-        answers_layout.addWidget(answer_b)
-        answers_layout.addWidget(answer_c)
-        answers.setLayout(answers_layout)
+        detection_tracker_layout = QHBoxLayout()
+        detection_tracker_layout.addWidget(detection_tracker_bot)
+        detection_tracker_layout.addWidget(detection_tracker_byte)
+        # answers.setLayout(answers_layout)
+
+        # Slider for Confidence Threshold
+        confidence_label = QLabel("Confidence Threshold:")
+        confidence_slider = QSlider(Qt.Horizontal)
+        confidence_slider.setMinimum(10)  # minimum value * 10
+        confidence_slider.setMaximum(100)  # maximum value * 10
+        confidence_slider.setValue(50)  # default value, 0.5 as percentage
+        confidence_slider.setTickPosition(QSlider.TicksBelow)
+        confidence_slider.setTickInterval(10)
+
+        confidence_value_label = QLabel(str(confidence_slider.value() / 100.0))  # Initial value as string
+        confidence_value_label.setFixedWidth(40)  # Set a fixed width to avoid length change
+        confidence_slider.valueChanged.connect(lambda value: confidence_value_label.setText(str(value / 100.0)))
+
+        confidence_layout = QHBoxLayout()
+        confidence_layout.addWidget(confidence_slider)
+        confidence_layout.addWidget(confidence_value_label)
+
+        # Slider for IoU Threshold
+        iou_label = QLabel("IoU Threshold:")
+        iou_slider = QSlider(Qt.Horizontal)
+        iou_slider.setMinimum(10)  # minimum value * 10
+        iou_slider.setMaximum(100)  # maximum value * 10
+        iou_slider.setValue(50)  # default value, 0.5 as percentage
+        iou_slider.setTickPosition(QSlider.TicksBelow)
+        iou_slider.setTickInterval(10)
+
+        iou_value_label = QLabel(str(iou_slider.value() / 100.0))  # Initial value as string
+        iou_value_label.setFixedWidth(40)  # Set a fixed width to avoid length change
+        iou_slider.valueChanged.connect(lambda value: iou_value_label.setText(str(value / 100.0)))
+
+        iou_layout = QHBoxLayout()
+        iou_layout.addWidget(iou_slider)
+        iou_layout.addWidget(iou_value_label)
+
+        # Start/Stop Button
+        self.start_stop_button = QPushButton("Start")
+        self.start_stop_button.clicked.connect(self.start_stop_process)
+        self.process_running = False  # Variable to track process state
+
+        # Set a professional-looking style sheet for the button
+        self.start_stop_button.setStyleSheet("""
+            QPushButton {
+                color: white;
+                border: 1px solid #4CAF50;
+                border-radius: 4px;
+                padding: 6px;
+            }
+            QPushButton:hover {
+                background-color: #45a049; /* Darker Green */
+            }
+            QPushButton[stopped="false"] {
+                background-color: #FF0000; /* Red */
+                border: 1px solid #FF0000;
+            }
+            QPushButton[stopped="false"]:hover {
+                background-color: #D70000; /* Darker Red */
+            }
+            QPushButton[stopped="true"] {
+                background-color: #4CAF50; /* Green */
+                border: 1px solid #4CAF50;
+            }
+            QPushButton[stopped="true"]:hover {
+                background-color: #45a049; /* Darker Green */
+            }
+        """)
+
+
+
 
 
 
@@ -116,7 +186,13 @@ class Widget(QWidget):
         detection_grid_layout.addWidget(detection_video_res_label, 8, 0)
         detection_grid_layout.addWidget(self.detection_video_res_combobox, 8, 1, 1, 3)
         detection_grid_layout.addWidget(detection_tracker_label, 9, 0)
-        detection_grid_layout.addWidget(answers, 9, 1, 1, 3)
+        detection_grid_layout.addLayout(detection_tracker_layout, 9, 1, 1, 3)
+        detection_grid_layout.addWidget(confidence_label, 10, 0)
+        detection_grid_layout.addLayout(confidence_layout, 10, 1, 1, 3)
+        detection_grid_layout.addWidget(iou_label, 11, 0)
+        detection_grid_layout.addLayout(iou_layout, 11, 1, 1, 3)
+        detection_grid_layout.addWidget(self.start_stop_button, 12, 0, 1, 4)  # Add start/stop button
+
 
 
 
@@ -160,7 +236,7 @@ class Widget(QWidget):
         self.setLayout(layout)
 
     def toggle_video_source(self):
-        is_file_selected = self.sender().text() == "Video File"
+        is_file_selected = self.sender().text() == "Video File:"
         self.file_input.setEnabled(is_file_selected)
         self.file_browse_button.setEnabled(is_file_selected)  # Disable the Browse button when Video File is selected
         self.video_input_combobox.setEnabled(not is_file_selected)
@@ -188,3 +264,22 @@ class Widget(QWidget):
                 available_inputs.append(f"Camera {i}")
                 cap.release()
         return available_inputs
+    
+
+    def start_stop_process(self):
+        if self.process_running:
+            # If the process is running, stop it
+            self.process_running = False
+            self.start_stop_button.setProperty("stopped", "true")
+            self.start_stop_button.setText("Start")
+            print("Process Stopped")
+            # Add logic to stop the process (replace print statement with your logic)
+        else:
+            # If the process is stopped, start it
+            self.process_running = True
+            self.start_stop_button.setProperty("stopped", "false")
+            self.start_stop_button.setText("Stop")
+            print("Process Started")
+            # Add logic to start the process (replace print statement with your logic)
+        # Update style to apply changes
+        self.start_stop_button.style().polish(self.start_stop_button)
