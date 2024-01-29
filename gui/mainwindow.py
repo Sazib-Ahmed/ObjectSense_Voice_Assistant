@@ -10,7 +10,7 @@ class MainWindow(QMainWindow):
 
         # Set up the main window
         self.setWindowTitle("Your Assistant GUI")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 800, 700)
 
         # Create the central widget and set the layout
         central_widget = Widget()

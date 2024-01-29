@@ -52,7 +52,7 @@ model = YOLO('../yolov8s-seg.pt')
 #video_path = 0
 #video_path = '../Sequence01.mp4'
 #video_path = '../mo3.mov'
-video_path = '../Demo04.mp4'
+video_path = '../../Demo04.mp4'
 
 try:
     cap = cv2.VideoCapture(video_path)

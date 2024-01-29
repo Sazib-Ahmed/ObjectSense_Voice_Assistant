@@ -5,7 +5,8 @@ import queue
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSlider,QGroupBox,QComboBox,QRadioButton, QFileDialog, QFrame, QWidget, QLabel, QVBoxLayout, QPushButton, QTabWidget, QLineEdit, QHBoxLayout, QSizePolicy, QGridLayout
-
+from core.video_processing import process_video
+from .video_processing_thread import VideoProcessingThread
 class Widget(QWidget):
     def __init__(self):
         super().__init__()
@@ -24,10 +25,10 @@ class Widget(QWidget):
         detection_label.setAlignment(Qt.AlignCenter)
         detection_grid_layout.addWidget(detection_label, 0, 0, 1, 3)  # Set column span to 3
 
-        detection_video_label = QLabel("Video")
-        detection_video_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        detection_video_label.setAlignment(Qt.AlignCenter)
-        detection_grid_layout.addWidget(detection_video_label, 1, 0, 4, 4) 
+        self.detection_video_display = QLabel("Video")
+        self.detection_video_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.detection_video_display.setAlignment(Qt.AlignCenter)
+        detection_grid_layout.addWidget(self.detection_video_display, 1, 0, 4, 4) 
 
         # Radio Buttons for Video Source
         self.video_file_radio = QRadioButton("Video File:")
@@ -61,7 +62,7 @@ class Widget(QWidget):
 
 
         detection_model_label = QLabel("YOLOv8 Model Size:")
-        detection_model_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        # detection_model_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         detection_model_label.setAlignment(Qt.AlignCenter)
         self.detection_model_combobox = QComboBox()
         self.detection_model_combobox.addItems(["Nano", "Small", "Medium", "Large", "Extra Large"])
@@ -165,15 +166,6 @@ class Widget(QWidget):
                 background-color: #45a049; /* Darker Green */
             }
         """)
-
-
-
-
-
-
-
-
-
         
 
         # Add layouts to detection grid
@@ -192,15 +184,6 @@ class Widget(QWidget):
         detection_grid_layout.addWidget(iou_label, 11, 0)
         detection_grid_layout.addLayout(iou_layout, 11, 1, 1, 3)
         detection_grid_layout.addWidget(self.start_stop_button, 12, 0, 1, 4)  # Add start/stop button
-
-
-
-
-
-
-
-
-
 
         # Vertical Separator Line
         separator_line = QFrame()
@@ -266,6 +249,7 @@ class Widget(QWidget):
         return available_inputs
     
 
+    # Inside Widget class
     def start_stop_process(self):
         if self.process_running:
             # If the process is running, stop it
@@ -280,6 +264,39 @@ class Widget(QWidget):
             self.start_stop_button.setProperty("stopped", "false")
             self.start_stop_button.setText("Stop")
             print("Process Started")
+            self.video_thread = VideoProcessingThread(self, "./Demo04.mp4")
+            self.video_thread.finished.connect(self.on_video_processing_finished)
+            self.video_thread.start()
+            
             # Add logic to start the process (replace print statement with your logic)
+
         # Update style to apply changes
         self.start_stop_button.style().polish(self.start_stop_button)
+
+    def on_video_processing_finished(self):
+        # This method is called when the video processing thread finishes
+        print("Video Processing Finished")
+        self.video_thread.wait()  # Wait for the thread to finish before allowing it to be destroyed
+        self.video_thread.deleteLater()  # Delete the thread
+
+
+    def display_video_frame(self, frame):
+        """
+        Display a video frame in the QLabel.
+        Convert the OpenCV frame to a QPixmap and set it as the label's pixmap.
+        """
+        # Get the size of the QLabel
+        label_size = self.detection_video_display.size()
+        
+        # Resize the frame to match the QLabel size
+        frame = cv2.resize(frame, (label_size.width(), label_size.height()))
+        
+        # Convert the OpenCV frame to a QPixmap
+        height, width, channel = frame.shape
+        bytes_per_line = 3 * width
+        q_image = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(q_image)
+        
+        # Set the QPixmap as the label's pixmap
+        self.detection_video_display.setPixmap(pixmap)
+
