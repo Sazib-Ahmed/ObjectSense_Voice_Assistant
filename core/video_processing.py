@@ -420,6 +420,7 @@ def process_video(video_path, widget_instance, frame_callback=None):
             if widget_instance.video_thread.stopped:
                 break
 
+
             # Introduce delay to achieve the desired frame rate
             #time.sleep(frame_delay)
         except Exception as e:

@@ -205,8 +205,9 @@ def text2int(textnum, numwords={}):
     return result
 
 
-def main():
-    
+def start_assistant(widget_instance, frame_callback=None):
+    respond("Assistant Online")
+
     while True:
         command = listen_for_command()
 
@@ -257,14 +258,14 @@ def main():
             else:
                 respond("Sorry, I'm not sure how to handle that command.")
 
-if __name__ == "__main__":
-    respond("Assistant Online")
-    main()
+# if __name__ == "__main__":
+#     respond("Assistant Online")
+#     main()
     
-    # id_result = check_location(3,None,"id")
-    # print(id_result)
-    # print(check_location(None,"bottle","class"))
-    # print(check_location(None,"book","class"))
+#     # id_result = check_location(3,None,"id")
+#     # print(id_result)
+#     # print(check_location(None,"bottle","class"))
+#     # print(check_location(None,"book","class"))
 
-    # print(check_location(None,None,"all"))
+#     # print(check_location(None,None,"all"))
 
