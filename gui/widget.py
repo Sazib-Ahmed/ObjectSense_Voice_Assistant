@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 from core.video_processing import process_video
 from .video_processing_thread import VideoProcessingThread
 # from core.assistant import *
-from .assistant_worker_thread import AssistantWorkerThread, WorkerThread
+from .assistant_worker_thread import Worker, WorkerThread
 
 class Widget(QWidget):
     def __init__(self):
@@ -233,7 +233,7 @@ class Widget(QWidget):
         assistant_grid_layout.addWidget(self.text_browser, 1, 0, 10, 4)
         assistant_grid_layout.addWidget(self.status_label, 11, 0, 1, 4)
 
-        self.worker = AssistantWorkerThread()
+        self.worker = Worker()
         self.worker_thread = WorkerThread(self.worker)
         self.worker.text_signal.connect(self.update_label)
 
@@ -280,7 +280,7 @@ class Widget(QWidget):
         application_widget.setLayout(application_layout)
 
         # Add tabs to the widget
-        tab_widget.addTab(application_widget, "Application")
+        tab_widget.addTab(application_widget, "ObjectSense Voice Assistant")
 
         layout = QVBoxLayout()
         layout.addWidget(tab_widget)

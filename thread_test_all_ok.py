@@ -19,18 +19,16 @@ class Worker(QObject):
             if self.show_date:
                 timestamp_format1 = "MMMM dd, yyyy :"
                 timestamp = QDateTime.currentDateTime().toString(timestamp_format1)
-                self.text_signal.emit(f"{timestamp}\n-------------------", False)
+                self.text_signal.emit(f"{timestamp}\n\n-------------------", False)
             timestamp = QDateTime.currentDateTime().toString(timestamp_format)
             message = f"{timestamp}: {text}"
             self.text_signal.emit(message, False)
             QThread.msleep(1000)  # Sleep for 1 second
             self.show_date = False  # Set to False after the first message
         else:
-            self.text_signal.emit("",True) 
-            self.text_signal.emit("=====================", True) 
+            self.text_signal.emit("\n=====================", True) 
             self.text_signal.emit("Text generation stopped.", True)  # True indicates it's a stop message
-            self.text_signal.emit("=====================",True) 
-            self.text_signal.emit("", True)
+            self.text_signal.emit("=====================\n",True)
 
 
 class WorkerThread(QThread):

@@ -33,36 +33,39 @@ class_names = (
     "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
 )
 
-def listen_for_command(assistant_worker_thread):
+def listen_for_command(assistant_worker_thread, timeout=5):
     recognizer = sr.Recognizer()
 
     with sr.Microphone() as source:
-        print("Listening for commands...")
-        timestamp = datetime.now().strftime(timestamp_format)
-        message = f"{timestamp}: Listening for commands..."
-        assistant_worker_thread.text_signal.emit(message, False)
+        try:
+            print("Adjusting for ambient noise...")
+            recognizer.adjust_for_ambient_noise(source)
+            print("Listening for commands...")
+            timestamp = datetime.now().strftime(timestamp_format)
+            message = f"{timestamp}: Listening for commands..."
+            assistant_worker_thread.text_signal.emit(message, False)
 
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source)
+            audio = recognizer.listen(source, timeout=timeout)
 
-    try:
-        command = recognizer.recognize_google(audio)
-        print("You said:", command)
-        mes = "You: "+command
-        timestamp = datetime.now().strftime(timestamp_format)
-        assistant_worker_thread.text_signal.emit(f"-------------------\n{timestamp}\n{mes}\n-------------------", False)
+            command = recognizer.recognize_google(audio)
+            print("You said:", command)
+            mes = "You: " + command
+            timestamp = datetime.now().strftime(timestamp_format)
+            assistant_worker_thread.text_signal.emit(f"\n-------------------\n{timestamp}\n{mes}\n-------------------", False)
 
+            return command.lower()
 
+        except sr.UnknownValueError:
+            print("Could not understand audio. Please try again.")
+            return None
 
+        except sr.RequestError:
+            print("Unable to access the Google Speech Recognition API.")
+            return None
 
-        #respond(command)  # Call the function to display and tell what was recognized
-        return command.lower()
-    except sr.UnknownValueError:
-        print("Could not understand audio. Please try again.")
-        return None
-    except sr.RequestError:
-        print("Unable to access the Google Speech Recognition API.")
-        return None
+        except sr.WaitTimeoutError:
+            print("Listening timeout. No command detected.")
+            return None
 
 def respond(text,assistant_worker_thread):
     print("Assistant Said:", text)
@@ -71,7 +74,7 @@ def respond(text,assistant_worker_thread):
     tts = gTTS(text=text, lang='en')
     tts.save("response.mp3")
     timestamp = datetime.now().strftime(timestamp_format)
-    assistant_worker_thread.text_signal.emit(f"{timestamp}\n{mes}\n-------------------", False)
+    assistant_worker_thread.text_signal.emit(f"\n-------------------\n{timestamp}\n{mes}\n-------------------", False)
 
     subprocess.run(["afplay", "response.mp3"])  # Use afplay for audio playback on macOS
     
@@ -229,9 +232,10 @@ def text2int(textnum, numwords={}):
 
 
 def start_assistant(assistant_worker_thread,is_running):
-    timestamp_format1 = "%B %d, %Y :"
+    timestamp_format1 = "%B %d, %Y  \n  Time: %I:%M:%S %p          "
+    assistant_worker_thread.text_signal.emit("=====================\n||       New Chat Started       ||\n=====================",True) 
     timestamp = datetime.now().strftime(timestamp_format1)
-    assistant_worker_thread.text_signal.emit(f"{timestamp}\n===================", False)
+    assistant_worker_thread.text_signal.emit(f"  Date: {timestamp}\n=====================", False)
 
 
     respond("Assistant Online",assistant_worker_thread)
@@ -277,7 +281,7 @@ def start_assistant(assistant_worker_thread,is_running):
                         if results:
                             respond_location_results(results, class_name,assistant_worker_thread)
                         else:
-                            respond("Unable to connect to the database.",assistant_worker_thread)
+                            respond(f"No data found in the database about {class_name}",assistant_worker_thread)
                     # else:
                     #     respond("I'm sorry, I did not get the object name.")
                     
@@ -291,11 +295,7 @@ def start_assistant(assistant_worker_thread,is_running):
                 respond("Sorry, I'm not sure how to handle that command.",assistant_worker_thread)
             
     else:
-        assistant_worker_thread.text_signal.emit("",True) 
-        assistant_worker_thread.text_signal.emit("=====================", True) 
-        assistant_worker_thread.text_signal.emit("Assistant Stopped.", True)  # True indicates it's a stop message
-        assistant_worker_thread.text_signal.emit("=====================",True) 
-        assistant_worker_thread.text_signal.emit("", True) 
+        assistant_worker_thread.text_signal.emit("\n\n=====================\n||      Assistant Stopped.      ||\n=====================\n\n\n",True) 
 
 # if __name__ == "__main__":
 #     respond("Assistant Online")
