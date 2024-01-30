@@ -236,7 +236,7 @@ def start_assistant(assistant_worker_thread,is_running):
 
     respond("Assistant Online",assistant_worker_thread)
     
-    while is_running:
+    while assistant_worker_thread.is_running:
         command = listen_for_command(assistant_worker_thread)
 
         triggerKeywords = ["assistant", "tracker", "seen", "id", "have you"]

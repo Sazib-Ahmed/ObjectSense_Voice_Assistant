@@ -32,6 +32,29 @@ class Widget(QWidget):
         detection_grid_layout.addWidget(detection_label, 0, 0, 1, 4)  # Set column span to 3
 
         self.detection_video_display = QLabel("Video")
+            # Load the initial image using OpenCV
+        initial_image = cv2.imread("assets/video_label.JPG")
+
+        # Check if the image is loaded successfully
+        if initial_image is not None:
+            #Convert the OpenCV image to QPixmap
+            height, width, channel = initial_image.shape
+            # height = 480
+            # width = 640
+
+            bytes_per_line = 3 * width
+            q_image = QImage(initial_image.data, width, height, bytes_per_line, QImage.Format_RGB888)
+            pixmap = QPixmap.fromImage(q_image)
+
+            # Set the QPixmap as the label's pixmap and resize the label
+            self.detection_video_display.setPixmap(pixmap)
+            self.detection_video_display.setFixedSize(width, height)
+
+            # Adjust the size policy
+            self.detection_video_display.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        else:
+            # If the image fails to load, print an error message
+            print("Failed to load the initial image.")
         self.detection_video_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.detection_video_display.setAlignment(Qt.AlignCenter)
         detection_grid_layout.addWidget(self.detection_video_display, 1, 0, 4, 4)
@@ -146,6 +169,7 @@ class Widget(QWidget):
         self.start_stop_button.setStyleSheet("""
             QPushButton {
                 color: white;
+                background-color: #4CAF50; /* Green */
                 border: 1px solid #4CAF50;
                 border-radius: 4px;
                 padding: 6px;
@@ -190,7 +214,7 @@ class Widget(QWidget):
         separator_line = QFrame()
         separator_line.setFrameShape(QFrame.VLine)
         separator_line.setFrameShadow(QFrame.Sunken)
-        separator_line.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
+        separator_line.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
         # Assistant Grid
         assistant_grid_layout = QGridLayout()
@@ -222,6 +246,7 @@ class Widget(QWidget):
         self.assistant_start_stop_button.setStyleSheet("""
             QPushButton {
                 color: white;
+                background-color: #4CAF50; /* Green */
                 border: 1px solid #4CAF50;
                 border-radius: 4px;
                 padding: 6px;
