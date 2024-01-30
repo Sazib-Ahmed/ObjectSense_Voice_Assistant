@@ -2,7 +2,7 @@
 import cv2
 from threading import Thread
 from PySide6.QtGui import QImage, QPixmap
-from PySide6.QtCore import Qt, QTimer, QCoreApplication
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QSlider, QGroupBox, QComboBox, QRadioButton, QFileDialog, QFrame,
     QWidget, QLabel, QVBoxLayout, QPushButton, QTabWidget, QLineEdit,
@@ -203,9 +203,9 @@ class Widget(QWidget):
         self.text_browser.setAlignment(Qt.AlignBottom)
 
         self.status_label = QLabel(self)
-        self.status_label.setText("Assistant Offline.")
+        self.status_label.setText("")
         self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("QLabel { color: red; font-weight: bold; }")
+        # self.status_label.setStyleSheet("QLabel { color: red; font-weight: bold; }")
         assistant_grid_layout.addWidget(self.text_browser, 1, 0, 10, 4)
         assistant_grid_layout.addWidget(self.status_label, 11, 0, 1, 4)
 
@@ -261,13 +261,6 @@ class Widget(QWidget):
         layout.addWidget(tab_widget)
 
         self.setLayout(layout)
-
-        # Connect the aboutToQuit signal to the cleanup function
-        QCoreApplication.instance().aboutToQuit.connect(self.cleanup_on_exit)
-
-    def cleanup_on_exit(self):
-        # Stop and wait for the assistant thread to finish
-        self.stop_assistant_thread()
 
     def toggle_video_source(self):
         is_file_selected = self.sender().text() == "Video File:"
@@ -357,106 +350,82 @@ class Widget(QWidget):
         # Set the QPixmap as the label's pixmap
         self.detection_video_display.setPixmap(pixmap)
 
+    # def press_hold_assistant(self):
+    #     if self.press_hold_button.isChecked():
+    #         print("Press and Hold Assistant button is pressed and held")
+    #         # Add logic for press and hold assistant action (e.g., activate voice recognition)
+    #     else:
+    #         print("Press and Hold Assistant button is released")
+    #         # Add logic for releasing press and hold assistant action (e.g., deactivate voice recognition)
+
+    # def start_stop_assistant(self):
+    #     if self.start_stop_assistant_button.isChecked():
+    #         print("Start Assistant button pressed")
+    #         # Add logic for starting the assistant (e.g., start processing voice commands)
+    #     else:
+    #         print("Stop Assistant button pressed")
+    #         # Add logic for stopping the assistant (e.g., stop processing voice commands)
 
 
-                # Add QTimer to periodically check if the assistant thread is still running
-        self.assistant_check_timer = QTimer(self)
-        self.assistant_check_timer.timeout.connect(self.check_assistant_thread)
-        self.assistant_check_timer.start(1000)  # Check every 1 second
 
-    def check_assistant_thread(self):
-        if self.worker_thread.isRunning():
-            # The assistant thread is still running
-            pass
-        else:
-            # The assistant thread has finished
-            self.assistant_check_timer.stop()
+    # Inside Widget class
+    def assistant_start_stop_process(self):
+        if self.assistant_process_running: #self.worker_thread.isRunning():
             self.worker.is_running = False
             self.worker_thread.wait()
             self.assistant_process_running = False
             self.assistant_start_stop_button.setProperty("stopped", "true")
             self.assistant_start_stop_button.setText("Start")
-            self.assistant_start_stop_button.style().polish(self.assistant_start_stop_button)
-
-    def assistant_start_stop_process(self):
-        if self.worker_thread.isRunning():
-            # The assistant thread is running, stop it
-            self.stop_assistant_thread()
-        else:
-            # The assistant thread is not running, start it
-            self.start_assistant_thread()
-
-    def start_assistant_thread(self):
-        self.assistant_process_running = True
-        self.assistant_start_stop_button.setProperty("stopped", "false")
-        self.assistant_start_stop_button.setText("Stop")
-        self.assistant_start_stop_button.style().polish(self.assistant_start_stop_button)
-
-        self.worker.is_running = True
-        self.worker.show_date = True  # Reset to True when starting
-        self.worker_thread = WorkerThread(self.worker)
-        self.worker_thread.start()
-
-    def stop_assistant_thread(self):
-        self.worker.is_running = False
-        # Wait for the assistant thread to finish
-        self.worker_thread.wait()
-        self.assistant_process_running = False
-        self.assistant_start_stop_button.setProperty("stopped", "true")
-        self.assistant_start_stop_button.setText("Start")
-        self.assistant_start_stop_button.style().polish(self.assistant_start_stop_button)
-
-
-    # # Inside Widget class
-    # def assistant_start_stop_process(self):
-    #     if self.worker_thread.isRunning():
-    #         self.stop_assistant_thread()
-    #         self.worker.is_running = False
-    #         self.worker_thread.wait()
-    #         self.assistant_process_running = False
-    #         self.assistant_start_stop_button.setProperty("stopped", "true")
-    #         self.assistant_start_stop_button.setText("Start")
-
-    #     else:
-    #         print("stop pressed")
-    #         self.start_assistant_thread()
-    #         self.worker.is_running = True
-    #         self.worker.show_date = True  # Reset to True when starting
-    #         self.worker_thread.start()
-    #         # If the process is stopped, start it
-    #         self.assistant_process_running = True
-    #         self.assistant_start_stop_button.setProperty("stopped", "false")
-    #         self.assistant_start_stop_button.setText("Stop")
-
-    #     # Update style to apply changes
-    #     self.assistant_start_stop_button.style().polish(self.assistant_start_stop_button)
-
-
-
-    def update_label(self, message, is_stop_message):
-        current_text = self.text_browser.toPlainText()
-        new_text = f"{current_text}\n{message}"
-        self.text_browser.setPlainText(new_text)
-        # Scroll to the bottom
-        scrollbar = self.text_browser.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
-
-        if is_stop_message:
-            self.status_label.setText("Assistant Offline.")
-        else:
-            self.status_label.setText("Assistant Online.")
-
-    def update_label(self, message, is_stop_message):
-        current_text = self.text_browser.toPlainText()
-        new_text = f"{current_text}\n{message}"
-        self.text_browser.setPlainText(new_text)
-        # Scroll to the bottom
-        scrollbar = self.text_browser.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
-
-        if is_stop_message:
             self.status_label.setText("Assistant Offline.")
             self.status_label.setStyleSheet("QLabel { color: red; font-weight: bold; }")
+
         else:
+            self.worker.is_running = True
+            self.worker.show_date = True  # Reset to True when starting
+            self.worker_thread.start()
+            # If the process is stopped, start it
+            self.assistant_process_running = True
+            self.assistant_start_stop_button.setProperty("stopped", "false")
+            self.assistant_start_stop_button.setText("Stop")
             self.status_label.setText("Assistant Online.")
             self.status_label.setStyleSheet("QLabel { color: green; font-weight: bold; }")
+
+        # Update style to apply changes
+        self.assistant_start_stop_button.style().polish(self.assistant_start_stop_button)
+
+
+    # def stop_assistant_thread(self):
+    #     if hasattr(self, 'assistant_thread') and self.assistant_thread.isRunning():
+    #         self.assistant_thread.stop()
+    #         self.assistant_thread.wait()
+
+    # def on_assistant_finished(self):
+    #     # This method is called when the video processing thread finishes
+    #     print("Assistant Finished")
+    #     self.assistant_thread.wait()  # Wait for the thread to finish before allowing it to be destroyed
+    #     self.assistant_thread.deleteLater()  # Delete the thread
+
+    def update_label(self, message, is_stop_message):
+        current_text = self.text_browser.toPlainText()
+        new_text = f"{current_text}\n{message}"
+        self.text_browser.setPlainText(new_text)
+        # Scroll to the bottom
+        scrollbar = self.text_browser.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+        if message=="Exited":
+            print("-------------stoped-------")
+            self.worker_thread.wait()
+            self.status_label.setText("Assistant Offline.")
+            self.status_label.setStyleSheet("QLabel { color: red; font-weight: bold; }")
+            self.assistant_process_running = False
+            self.assistant_start_stop_button.setProperty("stopped", "true")
+            self.assistant_start_stop_button.setText("Start")
+        # if is_stop_message:
+        #     self.status_label.setText("Assistant Online.")
+        #     self.status_label.setStyleSheet("QLabel { color: green; font-weight: bold; }")
+        # else:
+        #     self.status_label.setText("Assistant Offline.")
+        #     self.status_label.setStyleSheet("QLabel { color: red; font-weight: bold; }")
+
+        self.assistant_start_stop_button.style().polish(self.assistant_start_stop_button)
+

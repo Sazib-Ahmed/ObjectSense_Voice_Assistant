@@ -4,6 +4,12 @@ import subprocess
 import pyautogui
 import webbrowser
 import mysql.connector
+from datetime import datetime
+
+timestamp_format = "%I:%M:%S %p"
+def ass_message(worker):
+    worker.text_signal.emit(">>>>>>>>>>>> Hi, I am assistan.t <<<<<<<<<<<", True) 
+
 
 def sep(mes="---"):
     print("==================================="+mes+"===================================")
@@ -27,17 +33,28 @@ class_names = (
     "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
 )
 
-def listen_for_command():
+def listen_for_command(assistant_worker_thread):
     recognizer = sr.Recognizer()
 
     with sr.Microphone() as source:
         print("Listening for commands...")
+        timestamp = datetime.now().strftime(timestamp_format)
+        message = f"{timestamp}: Listening for commands..."
+        assistant_worker_thread.text_signal.emit(message, False)
+
         recognizer.adjust_for_ambient_noise(source)
         audio = recognizer.listen(source)
 
     try:
         command = recognizer.recognize_google(audio)
         print("You said:", command)
+        mes = "You: "+command
+        timestamp = datetime.now().strftime(timestamp_format)
+        assistant_worker_thread.text_signal.emit(f"-------------------\n{timestamp}\n{mes}\n-------------------", False)
+
+
+
+
         #respond(command)  # Call the function to display and tell what was recognized
         return command.lower()
     except sr.UnknownValueError:
@@ -47,16 +64,21 @@ def listen_for_command():
         print("Unable to access the Google Speech Recognition API.")
         return None
 
-def respond(text):
+def respond(text,assistant_worker_thread):
     print("Assistant Said:", text)
+    mes = "Assistant: "+text
     sep()
     tts = gTTS(text=text, lang='en')
     tts.save("response.mp3")
+    timestamp = datetime.now().strftime(timestamp_format)
+    assistant_worker_thread.text_signal.emit(f"{timestamp}\n{mes}\n-------------------", False)
+
     subprocess.run(["afplay", "response.mp3"])  # Use afplay for audio playback on macOS
+    
 
 
 # Helper function to respond with location information
-def respond_location_results(results, object_type, object_identifier=None):
+def respond_location_results(results, object_type,assistant_worker_thread, object_identifier=None):
     if results:
         num_objects = len(results)
         object_descriptions = []
@@ -68,21 +90,21 @@ def respond_location_results(results, object_type, object_identifier=None):
 
         if num_objects == 1:
             if object_type=="tracker_id":
-                respond(f"I have seen the tracker ID {object_identifier}. I can see that it's a {result[3]} and it's {object_descriptions[0]}.")
+                respond(f"I have seen the tracker ID {object_identifier}. I can see that it's a {result[3]} and it's {object_descriptions[0]}.",assistant_worker_thread)
             elif object_identifier != None:
-                respond(f"I have seen {object_type} {object_identifier} {object_descriptions[0]}.")
+                respond(f"I have seen {object_type} {object_identifier} {object_descriptions[0]}.",assistant_worker_thread)
             else:
-                respond(f"I have seen {object_type} {object_descriptions[0]}.")
+                respond(f"I have seen {object_type} {object_descriptions[0]}.",assistant_worker_thread)
         elif num_objects > 1:
-            respond(f"I have seen {num_objects} {object_type}s. ")
+            respond(f"I have seen {num_objects} {object_type}s. ",assistant_worker_thread)
             for i in range(num_objects):
-                respond(f"One is {object_descriptions[i]}.")
+                respond(f"One is {object_descriptions[i]}.",assistant_worker_thread)
         else:
-            respond(f"I haven't seen any {object_type}.")
+            respond(f"I haven't seen any {object_type}.",assistant_worker_thread)
     else:
-        respond(f"I haven't seen any {object_type}.")
+        respond(f"I haven't seen any {object_type}.",assistant_worker_thread)
 
-def check_location(tracker_id=None, obj_class=None, type=None):
+def check_location(assistant_worker_thread,tracker_id=None, obj_class=None, type=None):
     try:
         connection = mysql.connector.connect(
             host="127.0.0.1",
@@ -114,13 +136,14 @@ def check_location(tracker_id=None, obj_class=None, type=None):
 
     except mysql.connector.Error as error:
         print("Error:", error)
+        respond("Unable to connect to the database.",assistant_worker_thread)
         return None
     finally:
         if connection.is_connected():
             cursor.close()
             connection.close()
 
-def clear_database():
+def clear_database(assistant_worker_thread):
     try:
         connection = mysql.connector.connect(
             host="127.0.0.1",
@@ -133,11 +156,11 @@ def clear_database():
         cursor.execute("DELETE FROM detections")
         connection.commit()
 
-        respond("Cleared all data from the database!")
+        respond("Cleared all data from the database!",assistant_worker_thread)
 
     except mysql.connector.Error as error:
         print("Error:", error)
-        respond("An error occurred while clearing the database.")
+        respond("An error occurred while clearing the database.",assistant_worker_thread)
 
     finally:
         if connection.is_connected():
@@ -205,18 +228,23 @@ def text2int(textnum, numwords={}):
     return result
 
 
-def start_assistant(widget_instance, frame_callback=None):
-    respond("Assistant Online")
+def start_assistant(assistant_worker_thread,is_running):
+    timestamp_format1 = "%B %d, %Y :"
+    timestamp = datetime.now().strftime(timestamp_format1)
+    assistant_worker_thread.text_signal.emit(f"{timestamp}\n===================", False)
 
-    while True:
-        command = listen_for_command()
+
+    respond("Assistant Online",assistant_worker_thread)
+    
+    while is_running:
+        command = listen_for_command(assistant_worker_thread)
 
         triggerKeywords = ["assistant", "tracker", "seen", "id", "have you"]
         #print("Received command:", command)
 
         if command and any(keyword in command for keyword in triggerKeywords):
             if "show the database" in command:
-                respond("Opening browser.")
+                respond("Opening browser.",assistant_worker_thread)
                 webbrowser.open("http://localhost/phpmyadmin/index.php?route=/sql&pos=0&db=assistant&table=detections")
             elif "tracker" in command and "id" in command:
                 parts = command.split()
@@ -234,29 +262,40 @@ def start_assistant(widget_instance, frame_callback=None):
 
                     if tracker_id is not None:
                         # Use the provided query to get the object locations for the given tracker ID
-                        results = check_location(tracker_id,None,"id")
-                        respond_location_results(results, "tracker_id", raw_tracker_id)
+                        results = check_location(assistant_worker_thread,tracker_id,None,"id")
+                        respond_location_results(results, "tracker_id",assistant_worker_thread, raw_tracker_id)
                     else:
-                        respond("I'm sorry, I couldn't convert the tracker ID to a number.")
+                        respond("I'm sorry, I couldn't convert the tracker ID to a number.",assistant_worker_thread)
                 else:
-                    respond("I'm not sure how to handle that command.")
+                    respond("I'm not sure how to handle that command.",assistant_worker_thread)
 
             elif any(keyword in command for keyword in ["seen", "saw", "know", "where"]):
                 for class_name in class_names:
                     if class_name.lower() in command.lower():
                         # Use the provided query to get the object locations for the given class name
-                        results = check_location(None, class_name, "class")
-                        respond_location_results(results, class_name)
+                        results = check_location(assistant_worker_thread,None, class_name, "class")
+                        if results:
+                            respond_location_results(results, class_name,assistant_worker_thread)
+                        else:
+                            respond("Unable to connect to the database.",assistant_worker_thread)
                     # else:
                     #     respond("I'm sorry, I did not get the object name.")
                     
             elif "clear the database" in command:
-                clear_database()
+                clear_database(assistant_worker_thread)
             elif "exit" in command:
-                respond("Goodbye!")
+                respond("Goodbye!",assistant_worker_thread)
+                assistant_worker_thread.text_signal.emit("Exited",True) 
                 break
             else:
-                respond("Sorry, I'm not sure how to handle that command.")
+                respond("Sorry, I'm not sure how to handle that command.",assistant_worker_thread)
+            
+    else:
+        assistant_worker_thread.text_signal.emit("",True) 
+        assistant_worker_thread.text_signal.emit("=====================", True) 
+        assistant_worker_thread.text_signal.emit("Assistant Stopped.", True)  # True indicates it's a stop message
+        assistant_worker_thread.text_signal.emit("=====================",True) 
+        assistant_worker_thread.text_signal.emit("", True) 
 
 # if __name__ == "__main__":
 #     respond("Assistant Online")

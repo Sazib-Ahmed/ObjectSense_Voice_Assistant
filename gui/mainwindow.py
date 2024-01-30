@@ -9,7 +9,7 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
 
         # Set up the main window
-        self.setWindowTitle("Your Assistant GUI")
+        self.setWindowTitle("A Comprehensive Approach to Location Tracking of Easily-Misplaced Objects with YOLO and Voice Assistant")
         self.setGeometry(100, 100, 800, 700)
 
         # Create the central widget and set the layout
