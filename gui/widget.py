@@ -375,6 +375,7 @@ class Widget(QWidget):
             self.process_running = False
             self.start_stop_button.setProperty("stopped", "true")
             self.start_stop_button.setText("Start")
+            self.start_stop_button.style().polish(self.start_stop_button)
             self.stop_video_thread()
             print("Process Stopped")
             # Add logic to stop the process (replace print statement with your logic)
@@ -429,6 +430,8 @@ class Widget(QWidget):
         self.video_thread.deleteLater()  # Delete the thread
 
 
+
+
     def display_video_frame(self, frame):
         """
         Display a video frame in the QLabel.
@@ -436,18 +439,24 @@ class Widget(QWidget):
         """
         # Get the size of the QLabel
         label_size = self.detection_video_display.size()
-        
+
         # Resize the frame to match the QLabel size
         frame = cv2.resize(frame, (label_size.width(), label_size.height()))
-        
-        # Convert the OpenCV frame to a QPixmap
-        height, width, channel = frame.shape
+
+        # Convert the OpenCV frame to RGB format
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # Convert the RGB frame to a QImage
+        height, width, channel = rgb_frame.shape
         bytes_per_line = 3 * width
-        q_image = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
+        q_image = QImage(rgb_frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
+
+        # Convert the QImage to a QPixmap
         pixmap = QPixmap.fromImage(q_image)
-        
+
         # Set the QPixmap as the label's pixmap
         self.detection_video_display.setPixmap(pixmap)
+
 
     # def press_hold_assistant(self):
     #     if self.press_hold_button.isChecked():

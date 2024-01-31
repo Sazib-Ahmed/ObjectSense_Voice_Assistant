@@ -45,7 +45,7 @@ def listen_for_command(assistant_worker_thread, timeout=5):
             message = f"{timestamp}: Listening for commands..."
             assistant_worker_thread.text_signal.emit(message, False)
 
-            audio = recognizer.listen(source, timeout=timeout)
+            audio = recognizer.listen(source, timeout=1, phrase_time_limit=3)
 
             command = recognizer.recognize_google(audio)
             print("You said:", command)
@@ -81,7 +81,9 @@ def respond(text,assistant_worker_thread):
 
 
 # Helper function to respond with location information
-def respond_location_results(results, object_type,assistant_worker_thread, object_identifier=None):
+def respond_location_results(results, object_type, assistant_worker_thread, object_identifier=None):
+    response_list = ""
+
     if results:
         num_objects = len(results)
         object_descriptions = []
@@ -92,20 +94,31 @@ def respond_location_results(results, object_type,assistant_worker_thread, objec
                 object_descriptions.append(f"{location} the {result[6]}")
 
         if num_objects == 1:
-            if object_type=="tracker_id":
-                respond(f"I have seen the tracker ID {object_identifier}. I can see that it's a {result[3]} and it's {object_descriptions[0]}.",assistant_worker_thread)
-            elif object_identifier != None:
-                respond(f"I have seen {object_type} {object_identifier} {object_descriptions[0]}.",assistant_worker_thread)
+            if object_type == "tracker_id":
+                response_list += f"I have seen the tracker ID {object_identifier}. I can see that it's a {result[3]} and it's {object_descriptions[0]}."
+            elif object_identifier is not None:
+                response_list += f"I have seen {object_type} {object_identifier}. It is {object_descriptions[0]}."
             else:
-                respond(f"I have seen {object_type} {object_descriptions[0]}.",assistant_worker_thread)
+                response_list += f"I have seen {object_type}. It is {object_descriptions[0]}."
         elif num_objects > 1:
-            respond(f"I have seen {num_objects} {object_type}s. ",assistant_worker_thread)
+            response_list += f"I have seen {num_objects} {object_type}s. "
             for i in range(num_objects):
-                respond(f"One is {object_descriptions[i]}.",assistant_worker_thread)
+                response_list += f"One is {object_descriptions[i]}."
         else:
-            respond(f"I haven't seen any {object_type}.",assistant_worker_thread)
+            response_list += f"I haven't seen any {object_type}."
+
     else:
-        respond(f"I haven't seen any {object_type}.",assistant_worker_thread)
+        response_list += f"I haven't seen any {object_type}."
+
+    # Send the response to the respond method
+    respond(response_list, assistant_worker_thread)
+
+
+def respond(message, assistant_worker_thread):
+    timestamp = datetime.now().strftime(timestamp_format)
+    formatted_message = f"\n-------------------\n{timestamp}\n{message}\n-------------------"
+    assistant_worker_thread.text_signal.emit(formatted_message, False)
+
 
 def check_location(assistant_worker_thread,tracker_id=None, obj_class=None, type=None):
     try:

@@ -287,6 +287,8 @@ def process_video(widget_instance, frame_callback=None):
     # Store the track history and for FPS calculation
     track_history = defaultdict(lambda: [])
     prev_frame_time = 0
+    annotator = None  # Initialize annotator variable
+
 
     # Define the desired frame rate (5 frames per second)
     desired_fps = 20
@@ -323,6 +325,7 @@ def process_video(widget_instance, frame_callback=None):
             sep(mes)
             if not success:
                 print("Failed to grab frame")
+                # continue
                 cap.release()
                 cv2.destroyAllWindows()
                 break
@@ -417,6 +420,9 @@ def process_video(widget_instance, frame_callback=None):
 
                 
                 annotator = results[0].plot()
+            else:
+                # If no objects detected, update annotator to the original frame
+                annotator = frame.copy()
                 
                 # annotator = Annotator(frame, line_width=2, example=str(model.names))
                 # for box, cls in zip(boxes_xywh, clss):
@@ -428,13 +434,12 @@ def process_video(widget_instance, frame_callback=None):
             # Calculate and display the FPS
             fps = 1 / (new_frame_time - prev_frame_time)
             prev_frame_time = new_frame_time
-            cv2.putText(annotator, f"FPS: {fps:.2f}", (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 3, cv2.LINE_AA)
+            cv2.putText(annotator, f"FPS: {fps:.2f}", (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 3,
+                        cv2.LINE_AA)
 
             # Show the annotated frame
-            #cv2.imshow("YOLOv8 Tracking", annotator)
-            # Send the annotated frame to the GUI using the callback
-            # if frame_callback:
             widget_instance.display_video_frame(annotator)
+
             # Emit the frame_processed signal
             frame_callback(annotator)
 
@@ -442,14 +447,11 @@ def process_video(widget_instance, frame_callback=None):
             if widget_instance.video_thread.stopped:
                 break
 
-
-            # Introduce delay to achieve the desired frame rate
-            #time.sleep(frame_delay)
         except Exception as e:
             print(f"An error occurred during video processing: {e}")
-        # else:
-        #     cap.release()
-        #     cv2.destroyAllWindows()
+            # Handle the error as needed (e.g., break the loop, log the error, etc.)
+            break
+
     cap.release()
     cv2.destroyAllWindows()
 
