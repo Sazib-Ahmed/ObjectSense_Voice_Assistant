@@ -5,6 +5,7 @@ import pyautogui
 import webbrowser
 import mysql.connector
 from datetime import datetime
+import pyttsx3
 
 timestamp_format = "%I:%M:%S %p"
 def ass_message(worker):
@@ -42,12 +43,14 @@ def listen_for_command(assistant_worker_thread, timeout=5):
             recognizer.adjust_for_ambient_noise(source)
             print("Listening for commands...")
             timestamp = datetime.now().strftime(timestamp_format)
-            message = f"{timestamp}: Listening for commands..."
+            message = f"{timestamp}: Listening for commands for 3 seconds..."
             assistant_worker_thread.text_signal.emit(message, False)
-
-            audio = recognizer.listen(source, timeout=1, phrase_time_limit=3)
+            
+            audio = recognizer.listen(source, timeout=2, phrase_time_limit=3)
 
             command = recognizer.recognize_google(audio)
+            # command = recognizer.recognize_sphinx(audio)
+
             print("You said:", command)
             mes = "You: " + command
             timestamp = datetime.now().strftime(timestamp_format)
@@ -78,6 +81,25 @@ def respond(text,assistant_worker_thread):
 
     subprocess.run(["afplay", "response.mp3"])  # Use afplay for audio playback on macOS
     
+# def respond(text, assistant_worker_thread):
+#     try:
+#         print("Assistant Said:", text)
+#         mes = "Assistant: "+text
+#         sep()
+#         timestamp = datetime.now().strftime(timestamp_format)
+#         assistant_worker_thread.text_signal.emit(f"\n-------------------\n{timestamp}\n{mes}\n-------------------", False)
+
+#         # Initialize the text-to-speech engine
+#         engine = pyttsx3.init()
+
+#         # Adjust the rate and volume if needed
+
+#         engine.say(text)
+#         engine.runAndWait()
+
+#     except Exception as e:
+#         print("Error during text-to-speech:", str(e))
+#         # Handle the error as needed
 
 
 # Helper function to respond with location information
@@ -95,30 +117,23 @@ def respond_location_results(results, object_type, assistant_worker_thread, obje
 
         if num_objects == 1:
             if object_type == "tracker_id":
-                response_list += f"I have seen the tracker ID {object_identifier}. I can see that it's a {result[3]} and it's {object_descriptions[0]}."
+                response_list += f"I have seen the tracker ID {object_identifier}. I can see that it's a {result[3]} and it's {object_descriptions[0]}. "
             elif object_identifier is not None:
-                response_list += f"I have seen {object_type} {object_identifier}. It is {object_descriptions[0]}."
+                response_list += f"I have seen {object_type} {object_identifier}. It is {object_descriptions[0]}. "
             else:
-                response_list += f"I have seen {object_type}. It is {object_descriptions[0]}."
+                response_list += f"I have seen {object_type}. It is {object_descriptions[0]}. "
         elif num_objects > 1:
             response_list += f"I have seen {num_objects} {object_type}s. "
             for i in range(num_objects):
-                response_list += f"One is {object_descriptions[i]}."
+                response_list += f"One is {object_descriptions[i]}. "
         else:
-            response_list += f"I haven't seen any {object_type}."
+            response_list += f"I haven't seen any {object_type}. "
 
     else:
-        response_list += f"I haven't seen any {object_type}."
+        response_list += f"I haven't seen any {object_type}. "
 
     # Send the response to the respond method
     respond(response_list, assistant_worker_thread)
-
-
-def respond(message, assistant_worker_thread):
-    timestamp = datetime.now().strftime(timestamp_format)
-    formatted_message = f"\n-------------------\n{timestamp}\n{message}\n-------------------"
-    assistant_worker_thread.text_signal.emit(formatted_message, False)
-
 
 def check_location(assistant_worker_thread,tracker_id=None, obj_class=None, type=None):
     try:
@@ -309,15 +324,3 @@ def start_assistant(assistant_worker_thread,is_running):
             
     else:
         assistant_worker_thread.text_signal.emit("\n\n=====================\n||      Assistant Stopped.      ||\n=====================\n\n\n",True) 
-
-# if __name__ == "__main__":
-#     respond("Assistant Online")
-#     main()
-    
-#     # id_result = check_location(3,None,"id")
-#     # print(id_result)
-#     # print(check_location(None,"bottle","class"))
-#     # print(check_location(None,"book","class"))
-
-#     # print(check_location(None,None,"all"))
-
