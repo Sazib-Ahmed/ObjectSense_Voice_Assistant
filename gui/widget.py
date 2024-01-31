@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QSlider, QGroupBox, QComboBox, QRadioButton, QFileDialog, QFrame,
     QWidget, QLabel, QVBoxLayout, QPushButton, QTabWidget, QLineEdit,
-    QHBoxLayout, QSizePolicy, QGridLayout,QTextBrowser
+    QHBoxLayout, QSizePolicy, QGridLayout,QTextBrowser,QButtonGroup
 )
 from core.video_processing import process_video
 from .video_processing_thread import VideoProcessingThread
@@ -17,33 +17,45 @@ class Widget(QWidget):
     def __init__(self):
         super().__init__()
 
+        # Instance variables to store selected options
+        self.selected_video_source = "live"  # To store the selected video source (file or live)
+        self.selected_video_file = None  # To store the selected video file path
+        self.selected_live_video_input = 0  # To store the selected live video input
+        self.selected_detection_model = "../yolov8s-seg.pt"  # To store the selected YOLOv8 model size
+        self.selected_pixel_size = 640  # To store the selected pixel size
+        self.selected_tracker = "botsort.yaml"   # botsort.yaml/bytetrack.yaml To store the selected tracker (BoT-SORT or ByteTrack)
+        self.selected_confidence = 0.25
+        self.selected_iou = 0.7
+
+
+
         self.setWindowTitle("ObjectSense Voice Assistant")
 
-        tab_widget = QTabWidget(self)
+        self.tab_widget = QTabWidget(self)
 
         # Application
-        application_widget = QWidget()
+        self.application_widget = QWidget()
 
         # Detection Grid
-        detection_grid_layout = QGridLayout()
-        detection_label = QLabel("Object Detection System")
-        detection_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        detection_label.setAlignment(Qt.AlignCenter)
-        detection_grid_layout.addWidget(detection_label, 0, 0, 1, 4)  # Set column span to 3
+        self.detection_grid_layout = QGridLayout()
+        self.detection_label = QLabel("Object Detection System")
+        self.detection_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.detection_label.setAlignment(Qt.AlignCenter)
+        self.detection_grid_layout.addWidget(self.detection_label, 0, 0, 1, 4)  # Set column span to 3
 
         self.detection_video_display = QLabel("Video")
             # Load the initial image using OpenCV
-        initial_image = cv2.imread("assets/video_label.JPG")
+        self.initial_image = cv2.imread("assets/video_label.JPG")
 
         # Check if the image is loaded successfully
-        if initial_image is not None:
+        if self.initial_image is not None:
             #Convert the OpenCV image to QPixmap
-            height, width, channel = initial_image.shape
+            height, width, channel = self.initial_image.shape
             # height = 480
             # width = 640
 
             bytes_per_line = 3 * width
-            q_image = QImage(initial_image.data, width, height, bytes_per_line, QImage.Format_RGB888)
+            q_image = QImage(self.initial_image.data, width, height, bytes_per_line, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(q_image)
 
             # Set the QPixmap as the label's pixmap and resize the label
@@ -57,7 +69,7 @@ class Widget(QWidget):
             print("Failed to load the initial image.")
         self.detection_video_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.detection_video_display.setAlignment(Qt.AlignCenter)
-        detection_grid_layout.addWidget(self.detection_video_display, 1, 0, 4, 4)
+        self.detection_grid_layout.addWidget(self.detection_video_display, 1, 0, 4, 4)
 
         # Radio Buttons for Video Source
         self.video_file_radio = QRadioButton("Video File:")
@@ -65,15 +77,20 @@ class Widget(QWidget):
         # Set "Live Video" as the default selected
         self.live_video_radio.setChecked(True)
 
+        # Create button groups for video source and tracker options
+        self.video_source_button_group = QButtonGroup(self)
+        self.video_source_button_group.addButton(self.video_file_radio)
+        self.video_source_button_group.addButton(self.live_video_radio)
+
+
         # Connect signals to slots
         self.video_file_radio.toggled.connect(self.toggle_video_source)
         self.live_video_radio.toggled.connect(self.toggle_video_source)
 
         # File Input for Video File
         self.file_input = QLineEdit()
-        file_browse_button = QPushButton("Browse")
-        file_browse_button.clicked.connect(self.browse_file)
-        self.file_browse_button = file_browse_button
+        self.file_browse_button = QPushButton("Browse")
+        self.file_browse_button.clicked.connect(self.browse_file)
 
         # Available Video Inputs for Live Video
         self.video_inputs = self.get_available_video_inputs()
@@ -81,84 +98,96 @@ class Widget(QWidget):
         self.video_input_combobox.addItems(self.video_inputs)
 
         # Set up layouts for input options
-        file_input_layout = QHBoxLayout()
-        file_input_layout.addWidget(self.file_input)
-        file_input_layout.addWidget(file_browse_button)
+        self.file_input_layout = QHBoxLayout()
+        self.file_input_layout.addWidget(self.file_input)
+        self.file_input_layout.addWidget(self.file_browse_button)
 
         # Set the first option as default
         if self.video_inputs:
             self.video_input_combobox.setCurrentIndex(0)
 
-        detection_model_label = QLabel("YOLOv8 Model Size:")
-        detection_model_label.setAlignment(Qt.AlignCenter)
+        self.detection_model_label = QLabel("YOLOv8 Model Size:")
+        self.detection_model_label.setAlignment(Qt.AlignCenter)
         self.detection_model_combobox = QComboBox()
         self.detection_model_combobox.addItems(["Nano", "Small", "Medium", "Large", "Extra Large"])
 
         # Set the default value to "Medium"
-        default_index = self.detection_model_combobox.findText("Medium")
-        self.detection_model_combobox.setCurrentIndex(default_index)
+        self.default_model_size= self.detection_model_combobox.findText("Small")
+        self.detection_model_combobox.setCurrentIndex(self.default_model_size)
 
-        detection_video_res_label = QLabel("Pixel Size:")
-        detection_video_res_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        detection_video_res_label.setAlignment(Qt.AlignCenter)
-        original_resolution = (1920, 1080)  # Replace this with the actual resolution of your video
+        self.detection_video_res_label = QLabel("Pixel Size:")
+        self.detection_video_res_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.detection_video_res_label.setAlignment(Qt.AlignCenter)
+        self.original_resolution = (1920, 1080)  # Replace this with the actual resolution of your video
 
         self.detection_video_res_combobox = QComboBox()
 
         # Calculate multiples of 32 for the height only
-        resolutions = [str(j) for j in range(32, original_resolution[1] + 1, 32)]
+        self.resolutions = [str(j) for j in range(32, self.original_resolution[1] + 1, 32)]
 
-        self.detection_video_res_combobox.addItems(resolutions)
+        self.detection_video_res_combobox.addItems(self.resolutions)
         # Set the default value to 640
-        default_res = resolutions.index("640")
-        self.detection_video_res_combobox.setCurrentIndex(default_res)
+        self.default_res = self.resolutions.index("640")
+        self.detection_video_res_combobox.setCurrentIndex(self.default_res)
 
-        detection_tracker_label = QLabel("Tracker:")
-        detection_tracker_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        detection_tracker_label.setAlignment(Qt.AlignCenter)
+        self.detection_tracker_label = QLabel("Tracker:")
+        self.detection_tracker_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.detection_tracker_label.setAlignment(Qt.AlignCenter)
 
         # Radio buttons : answers
-        detection_tracker_bot = QRadioButton("BoT-SORT")
-        detection_tracker_byte = QRadioButton("ByteTrack ")
-        detection_tracker_bot.setChecked(True)
+        self.detection_tracker_bot = QRadioButton("BoT-SORT")
+        self.detection_tracker_byte = QRadioButton("ByteTrack ")
+        self.detection_tracker_bot.setChecked(True)
 
-        detection_tracker_layout = QHBoxLayout()
-        detection_tracker_layout.addWidget(detection_tracker_bot)
-        detection_tracker_layout.addWidget(detection_tracker_byte)
+        self.tracker_button_group = QButtonGroup(self)
+        self.tracker_button_group.addButton(self.detection_tracker_bot)
+        self.tracker_button_group.addButton(self.detection_tracker_byte)
+
+        # Connect signals to slots for radio buttons
+        self.video_file_radio.toggled.connect(self.toggle_video_source)
+        self.live_video_radio.toggled.connect(self.toggle_video_source)
+
+        self.detection_tracker_bot.toggled.connect(self.toggle_tracker)
+        self.detection_tracker_byte.toggled.connect(self.toggle_tracker)
+
+
+        self.detection_tracker_layout = QHBoxLayout()
+        self.detection_tracker_layout.addWidget(self.detection_tracker_bot)
+        self.detection_tracker_layout.addWidget(self.detection_tracker_byte)
 
         # Slider for Confidence Threshold
-        confidence_label = QLabel("Confidence Threshold:")
-        confidence_slider = QSlider(Qt.Horizontal)
-        confidence_slider.setMinimum(10)  # minimum value * 10
-        confidence_slider.setMaximum(100)  # maximum value * 10
-        confidence_slider.setValue(50)  # default value, 0.5 as a percentage
-        confidence_slider.setTickPosition(QSlider.TicksBelow)
-        confidence_slider.setTickInterval(10)
+        self.confidence_label = QLabel("Confidence Threshold:")
+        self.confidence_slider = QSlider(Qt.Horizontal)
+        self.confidence_slider.setMinimum(10)  # minimum value * 10
+        self.confidence_slider.setMaximum(100)  # maximum value * 10
+        self.confidence_slider.setValue(25)  # default value, 0.5 as a percentage
+        self.confidence_slider.setTickPosition(QSlider.TicksBelow)
+        self.confidence_slider.setTickInterval(10)
 
-        confidence_value_label = QLabel(str(confidence_slider.value() / 100.0))  # Initial value as a string
-        confidence_value_label.setFixedWidth(40)  # Set a fixed width to avoid length change
-        confidence_slider.valueChanged.connect(lambda value: confidence_value_label.setText(str(value / 100.0)))
+        self.confidence_value_label = QLabel(str(self.confidence_slider.value() / 100.0))  # Initial value as a string
+        self.confidence_value_label.setFixedWidth(40)  # Set a fixed width to avoid length change
+        self.confidence_slider.valueChanged.connect(lambda value: self.confidence_value_label.setText(str(value / 100.0)))
 
-        confidence_layout = QHBoxLayout()
-        confidence_layout.addWidget(confidence_slider)
-        confidence_layout.addWidget(confidence_value_label)
+        self.confidence_layout = QHBoxLayout()
+        self.confidence_layout.addWidget(self.confidence_slider)
+        self.confidence_layout.addWidget(self.confidence_value_label)
 
         # Slider for IoU Threshold
-        iou_label = QLabel("IoU Threshold:")
-        iou_slider = QSlider(Qt.Horizontal)
-        iou_slider.setMinimum(10)  # minimum value * 10
-        iou_slider.setMaximum(100)  # maximum value * 10
-        iou_slider.setValue(50)  # default value, 0.5 as a percentage
-        iou_slider.setTickPosition(QSlider.TicksBelow)
-        iou_slider.setTickInterval(10)
+        self.iou_label = QLabel("IoU Threshold:")
+        self.iou_slider = QSlider(Qt.Horizontal)
+        self.iou_slider.setMinimum(10)  # minimum value * 10
+        self.iou_slider.setMaximum(100)  # maximum value * 10
+        self.iou_slider.setValue(70)  # default value, 0.5 as a percentage
+        self.iou_slider.setTickPosition(QSlider.TicksBelow)
+        self.iou_slider.setTickInterval(10)
 
-        iou_value_label = QLabel(str(iou_slider.value() / 100.0))  # Initial value as a string
-        iou_value_label.setFixedWidth(40)  # Set a fixed width to avoid length change
-        iou_slider.valueChanged.connect(lambda value: iou_value_label.setText(str(value / 100.0)))
+        self.iou_value_label = QLabel(str(self.iou_slider.value() / 100.0))  # Initial value as a string
+        self.iou_value_label.setFixedWidth(40)  # Set a fixed width to avoid length change
+        self.iou_slider.valueChanged.connect(lambda value: self.iou_value_label.setText(str(value / 100.0)))
 
-        iou_layout = QHBoxLayout()
-        iou_layout.addWidget(iou_slider)
-        iou_layout.addWidget(iou_value_label)
+        self.iou_layout = QHBoxLayout()
+        self.iou_layout.addWidget(self.iou_slider)
+        self.iou_layout.addWidget(self.iou_value_label)
 
         # Start/Stop Button
         self.start_stop_button = QPushButton("Start")
@@ -194,34 +223,34 @@ class Widget(QWidget):
         """)
 
         # Add layouts to the detection grid
-        detection_grid_layout.addWidget(self.video_file_radio, 5, 0)
-        detection_grid_layout.addLayout(file_input_layout, 5, 1, 1, 3)
-        detection_grid_layout.addWidget(self.live_video_radio, 6, 0)
-        detection_grid_layout.addWidget(self.video_input_combobox, 6, 1, 1, 3)
-        detection_grid_layout.addWidget(detection_model_label, 7, 0)
-        detection_grid_layout.addWidget(self.detection_model_combobox, 7, 1, 1, 3)
-        detection_grid_layout.addWidget(detection_video_res_label, 8, 0)
-        detection_grid_layout.addWidget(self.detection_video_res_combobox, 8, 1, 1, 3)
-        detection_grid_layout.addWidget(detection_tracker_label, 9, 0)
-        detection_grid_layout.addLayout(detection_tracker_layout, 9, 1, 1, 3)
-        detection_grid_layout.addWidget(confidence_label, 10, 0)
-        detection_grid_layout.addLayout(confidence_layout, 10, 1, 1, 3)
-        detection_grid_layout.addWidget(iou_label, 11, 0)
-        detection_grid_layout.addLayout(iou_layout, 11, 1, 1, 3)
-        detection_grid_layout.addWidget(self.start_stop_button, 12, 0, 1, 4)  # Add start/stop button
+        self.detection_grid_layout.addWidget(self.video_file_radio, 5, 0)
+        self.detection_grid_layout.addLayout(self.file_input_layout, 5, 1, 1, 3)
+        self.detection_grid_layout.addWidget(self.live_video_radio, 6, 0)
+        self.detection_grid_layout.addWidget(self.video_input_combobox, 6, 1, 1, 3)
+        self.detection_grid_layout.addWidget(self.detection_model_label, 7, 0)
+        self.detection_grid_layout.addWidget(self.detection_model_combobox, 7, 1, 1, 3)
+        self.detection_grid_layout.addWidget(self.detection_video_res_label, 8, 0)
+        self.detection_grid_layout.addWidget(self.detection_video_res_combobox, 8, 1, 1, 3)
+        self.detection_grid_layout.addWidget(self.detection_tracker_label, 9, 0)
+        self.detection_grid_layout.addLayout(self.detection_tracker_layout, 9, 1, 1, 3)
+        self.detection_grid_layout.addWidget(self.confidence_label, 10, 0)
+        self.detection_grid_layout.addLayout(self.confidence_layout, 10, 1, 1, 3)
+        self.detection_grid_layout.addWidget(self.iou_label, 11, 0)
+        self.detection_grid_layout.addLayout(self.iou_layout, 11, 1, 1, 3)
+        self.detection_grid_layout.addWidget(self.start_stop_button, 12, 0, 1, 4)  # Add start/stop button
 
         # Vertical Separator Line
-        separator_line = QFrame()
-        separator_line.setFrameShape(QFrame.VLine)
-        separator_line.setFrameShadow(QFrame.Sunken)
-        separator_line.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.separator_line = QFrame()
+        self.separator_line.setFrameShape(QFrame.VLine)
+        self.separator_line.setFrameShadow(QFrame.Sunken)
+        self.separator_line.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
         # Assistant Grid
-        assistant_grid_layout = QGridLayout()
-        assistant_label = QLabel("Assistant")
-        assistant_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        assistant_label.setAlignment(Qt.AlignCenter)
-        assistant_grid_layout.addWidget(assistant_label, 0, 0, 1, 4)  # Set column span to 3
+        self.assistant_grid_layout = QGridLayout()
+        self.assistant_label = QLabel("Assistant")
+        self.assistant_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.assistant_label.setAlignment(Qt.AlignCenter)
+        self.assistant_grid_layout.addWidget(self.assistant_label, 0, 0, 1, 4)  # Set column span to 3
 
         self.text_browser = QTextBrowser(self)
         self.text_browser.setAlignment(Qt.AlignBottom)
@@ -230,8 +259,8 @@ class Widget(QWidget):
         self.status_label.setText("")
         self.status_label.setAlignment(Qt.AlignCenter)
         # self.status_label.setStyleSheet("QLabel { color: red; font-weight: bold; }")
-        assistant_grid_layout.addWidget(self.text_browser, 1, 0, 10, 4)
-        assistant_grid_layout.addWidget(self.status_label, 11, 0, 1, 4)
+        self.assistant_grid_layout.addWidget(self.text_browser, 1, 0, 10, 4)
+        self.assistant_grid_layout.addWidget(self.status_label, 11, 0, 1, 4)
 
         self.worker = Worker()
         self.worker_thread = WorkerThread(self.worker)
@@ -270,40 +299,61 @@ class Widget(QWidget):
             }
         """)
 
-        assistant_grid_layout.addWidget(self.assistant_start_stop_button, 12, 0, 1, 4)  # Add start/stop button
+        self.assistant_grid_layout.addWidget(self.assistant_start_stop_button, 12, 0, 1, 4)  # Add start/stop button
 
         # Application Layout with Separator
-        application_layout = QHBoxLayout()
-        application_layout.addLayout(detection_grid_layout)
-        application_layout.addWidget(separator_line)
-        application_layout.addLayout(assistant_grid_layout)
-        application_widget.setLayout(application_layout)
+        self.application_layout = QHBoxLayout()
+        self.application_layout.addLayout(self.detection_grid_layout)
+        self.application_layout.addWidget(self.separator_line)
+        self.application_layout.addLayout(self.assistant_grid_layout)
+        self.application_widget.setLayout(self.application_layout)
 
         # Add tabs to the widget
-        tab_widget.addTab(application_widget, "ObjectSense Voice Assistant")
+        self.tab_widget.addTab(self.application_widget, "ObjectSense Voice Assistant")
 
-        layout = QVBoxLayout()
-        layout.addWidget(tab_widget)
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.tab_widget)
 
-        self.setLayout(layout)
+        self.setLayout(self.layout)
 
     def toggle_video_source(self):
-        is_file_selected = self.sender().text() == "Video File:"
+        is_file_selected = self.video_file_radio.isChecked()
         self.file_input.setEnabled(is_file_selected)
-        self.file_browse_button.setEnabled(is_file_selected)  # Disable the Browse button when Video File is selected
+        self.file_browse_button.setEnabled(is_file_selected)
         self.video_input_combobox.setEnabled(not is_file_selected)
 
-        # Disable the other input option
         if is_file_selected:
-            self.live_video_radio.setChecked(False)
+            self.selected_video_source = "file"
         else:
-            self.video_file_radio.setChecked(False)
+            self.selected_video_source = "live"
 
+    def toggle_tracker(self):
+        if self.detection_tracker_bot.isChecked():
+            self.selected_tracker = "botsort.yaml"
+        else:
+            self.selected_tracker = "bytetrack.yaml"
+
+    # def browse_file(self):
+    #     file_dialog = QFileDialog()
+    #     file_path, _ = file_dialog.getOpenFileName(self, "Select Video File", "", "Video Files (*.mp4 *.mov *.avi)")
+    #     if file_path:
+    #         self.file_input.setText(file_path)
+    #         self.selected_video_file = file_path
     def browse_file(self):
+        video_formats = [
+            "Video Files (*.asf *.avi *.gif *.m4v *.mkv *.mov *.mp4 *.mpeg *.mpg *.ts *.wmv *.webm)",
+            "All Files (*)"
+        ]
+        
         file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, "Select Video File", "", "Video Files (*.mp4 *.avi)")
+        file_path, _ = file_dialog.getOpenFileName(
+            self, "Select Video File", "", ";;".join(video_formats)
+        )
+        
         if file_path:
             self.file_input.setText(file_path)
+            self.selected_video_file = file_path
+   
 
     def get_available_video_inputs(self):
         # Use OpenCV to get available video inputs (webcams)
@@ -319,6 +369,8 @@ class Widget(QWidget):
     # Inside Widget class
     def start_stop_process(self):
         if self.process_running:
+
+            
             # If the process is running, stop it
             self.process_running = False
             self.start_stop_button.setProperty("stopped", "true")
@@ -328,11 +380,33 @@ class Widget(QWidget):
             # Add logic to stop the process (replace print statement with your logic)
         else:
             # If the process is stopped, start it
+            # Set the selected options when starting the process
+            detection_model = self.detection_model_combobox.currentText()
+            if detection_model=="Nano":
+                self.selected_detection_model = "../yolov8n-seg.pt"
+            elif detection_model=="Small":
+                self.selected_detection_model = "../yolov8s-seg.pt"
+            elif detection_model=="Medium":
+                self.selected_detection_model = "../yolov8m-seg.pt"
+            elif detection_model=="Large":
+                self.selected_detection_model = "../yolov8l-seg.pt"
+            elif detection_model=="Extra Large":
+                self.selected_detection_model = "../yolov8x-seg.pt"
+            else:
+                self.selected_detection_model = "../yolov8s-seg.pt"
+                
+            self.selected_pixel_size = int(self.detection_video_res_combobox.currentText())
+            self.selected_live_video_input = self.video_input_combobox.currentIndex()
+            # self.selected_tracker = self.tracker_button_group.checkedButton().text()
+            self.selected_confidence = self.confidence_slider.value() / 100.0
+            self.selected_iou = self.iou_slider.value() / 100.0
+
+
             self.process_running = True
             self.start_stop_button.setProperty("stopped", "false")
             self.start_stop_button.setText("Stop")
             print("Process Started")
-            self.video_thread = VideoProcessingThread(self, "./Demo04.mp4")
+            self.video_thread = VideoProcessingThread(self)
             self.video_thread.finished.connect(self.on_video_processing_finished)
             self.video_thread.start()
             
