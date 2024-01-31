@@ -214,7 +214,7 @@ def get_closest_stationary_object(mobile_object_boxes, stationary_object_boxes):
     return closest_stationary_objects
 
 
-def process_video(video_path, widget_instance, frame_callback=None):
+def process_video(widget_instance, frame_callback=None):
     # class names present in the model
     class_names = (
         "person", "bicycle", "car", "motorcycle", "airplane",
@@ -235,7 +235,7 @@ def process_video(video_path, widget_instance, frame_callback=None):
         "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
     )
 
-    all_class_ids = tuple(range(80))
+    # all_class_ids = tuple(range(80))
 
 
     # Define moving object
@@ -243,18 +243,40 @@ def process_video(video_path, widget_instance, frame_callback=None):
     # Define stationary object
     stationary_object_ids=(13,56,57,58,59,60,62,68,69,72)
 
-    mobile_and_stationary_object_ids= [13, 15, 16, 24, 25, 26, 27, 28, 32, 39, 41, 42, 43, 44, 45, 56, 57, 58, 59, 60, 62, 63, 64, 65, 66, 67, 68, 69, 72, 73, 74, 75, 76, 77, 78, 79] #list(mobile_object_ids) + list(stationary_object_ids)
+    # mobile_and_stationary_object_ids= [13, 15, 16, 24, 25, 26, 27, 28, 32, 39, 41, 42, 43, 44, 45, 56, 57, 58, 59, 60, 62, 63, 64, 65, 66, 67, 68, 69, 72, 73, 74, 75, 76, 77, 78, 79] #list(mobile_object_ids) + list(stationary_object_ids)
 
 
 
     # Load the YOLOv8 model
-    model = YOLO('../yolov8s-seg.pt')
 
-    # Open the video file or webcam
-    #video_path = 0
-    #video_path = '../Sequence01.mp4'
-    #video_path = '../mo3.mov'
-    video_path = '../Demo04.mp4'
+    selected_video_source = widget_instance.selected_video_source  
+    selected_video_file = widget_instance.selected_video_file
+    selected_live_video_input = widget_instance.selected_live_video_input 
+    selected_detection_model = widget_instance.selected_detection_model
+    selected_pixel_size = widget_instance.selected_pixel_size
+    selected_tracker = widget_instance.selected_tracker
+    selected_confidence = widget_instance.selected_confidence
+    selected_iou = widget_instance.selected_iou
+
+    if selected_video_source=="file":
+        video_path=selected_video_file
+    elif selected_video_source=="live":
+        video_path=selected_live_video_input
+    else:
+        video_path=0
+    if not selected_detection_model:
+        selected_detection_model="yolov8s-seg.pt"
+    if not selected_pixel_size:
+        selected_pixel_size=640
+    if not selected_tracker:
+        selected_tracker="botsort.yaml"
+    if not selected_confidence:
+        selected_confidence=0.25
+    if not selected_iou:
+        selected_iou=0.7
+
+    model = YOLO(selected_detection_model)
+    
 
     try:
         cap = cv2.VideoCapture(video_path)
@@ -265,6 +287,8 @@ def process_video(video_path, widget_instance, frame_callback=None):
     # Store the track history and for FPS calculation
     track_history = defaultdict(lambda: [])
     prev_frame_time = 0
+    annotator = None  # Initialize annotator variable
+
 
     # Define the desired frame rate (5 frames per second)
     desired_fps = 20
@@ -301,6 +325,7 @@ def process_video(video_path, widget_instance, frame_callback=None):
             sep(mes)
             if not success:
                 print("Failed to grab frame")
+                # continue
                 cap.release()
                 cv2.destroyAllWindows()
                 break
@@ -308,7 +333,7 @@ def process_video(video_path, widget_instance, frame_callback=None):
             new_frame_time = time.time()
 
             # Run YOLOv8 tracking on the frame
-            results = model.track(frame, persist=True, verbose=False, imgsz=640, tracker="bytetrack.yaml", conf=0.3, iou=0.3) #, show=True, classes=mobile_and_stationary_object_ids
+            results = model.track(frame, persist=True, verbose=False, imgsz=selected_pixel_size, tracker=selected_tracker, conf=selected_confidence, iou=selected_iou) #, show=True, classes=mobile_and_stationary_object_ids
             # Set dictionaries to null
             detected_class_namess = {}
             class_masks = {}
@@ -395,6 +420,9 @@ def process_video(video_path, widget_instance, frame_callback=None):
 
                 
                 annotator = results[0].plot()
+            else:
+                # If no objects detected, update annotator to the original frame
+                annotator = frame.copy()
                 
                 # annotator = Annotator(frame, line_width=2, example=str(model.names))
                 # for box, cls in zip(boxes_xywh, clss):
@@ -406,13 +434,12 @@ def process_video(video_path, widget_instance, frame_callback=None):
             # Calculate and display the FPS
             fps = 1 / (new_frame_time - prev_frame_time)
             prev_frame_time = new_frame_time
-            cv2.putText(annotator, f"FPS: {fps:.2f}", (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 3, cv2.LINE_AA)
+            cv2.putText(annotator, f"FPS: {fps:.2f}", (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 3,
+                        cv2.LINE_AA)
 
             # Show the annotated frame
-            #cv2.imshow("YOLOv8 Tracking", annotator)
-            # Send the annotated frame to the GUI using the callback
-            # if frame_callback:
             widget_instance.display_video_frame(annotator)
+
             # Emit the frame_processed signal
             frame_callback(annotator)
 
@@ -420,14 +447,11 @@ def process_video(video_path, widget_instance, frame_callback=None):
             if widget_instance.video_thread.stopped:
                 break
 
-
-            # Introduce delay to achieve the desired frame rate
-            #time.sleep(frame_delay)
         except Exception as e:
             print(f"An error occurred during video processing: {e}")
-        # else:
-        #     cap.release()
-        #     cv2.destroyAllWindows()
+            # Handle the error as needed (e.g., break the loop, log the error, etc.)
+            break
+
     cap.release()
     cv2.destroyAllWindows()
 
