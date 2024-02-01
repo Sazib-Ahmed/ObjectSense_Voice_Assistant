@@ -1,11 +1,11 @@
 import speech_recognition as sr
 from gtts import gTTS
 import subprocess
-import pyautogui
+# import pyautogui
 import webbrowser
 import mysql.connector
 from datetime import datetime
-import pyttsx3
+# import pyttsx3
 
 timestamp_format = "%I:%M:%S %p"
 def ass_message(worker):

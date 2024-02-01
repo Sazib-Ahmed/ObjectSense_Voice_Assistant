@@ -1,6 +1,5 @@
 from collections import defaultdict
-from itertools import combinations
-from pathlib import Path
+
 import torch
 import cv2
 import numpy as np
@@ -8,10 +7,12 @@ import time
 from ultralytics import YOLO
 from mysql.connector import connect, Error
 from datetime import datetime
-from ultralytics.utils.plotting import Annotator
-import sys
+# from ultralytics.utils.plotting import Annotator
+# import sys
 # from gui.widget import Widget
 # Display the processed frame in the GUI
+# from itertools import combinations
+# from pathlib import Path
 
 
 def sep(mes="---"):
