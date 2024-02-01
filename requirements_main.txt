@@ -1,0 +1,12 @@
+# requirements.txt List of Project Dependencies
+#python==3.11.5 this project was developed with python 3.11.5
+
+gTTS==2.5.1
+mysql-connector-python==8.3.0
+opencv-python==4.9.0.80
+PyAudio==0.2.14
+PySide6==6.6.1
+SpeechRecognition==3.10.1
+ultralytics==8.1.8
+    Cython==3.0.8 
+    lapx==0.5.5

@@ -1,6 +1,5 @@
 # gui/widget.py
 import cv2
-from threading import Thread
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -10,8 +9,11 @@ from PySide6.QtWidgets import (
 )
 from core.video_processing import process_video
 from .video_processing_thread import VideoProcessingThread
-# from core.assistant import *
 from .assistant_worker_thread import Worker, WorkerThread
+
+# from core.assistant import *
+# from threading import Thread
+
 
 class Widget(QWidget):
     def __init__(self):
