@@ -260,40 +260,48 @@ def text2int(textnum, numwords={}):
 
 
 def start_assistant(assistant_worker_thread,is_running):
+    # Define the timestamp format for logging
     timestamp_format1 = "%B %d, %Y  \n  Time: %I:%M:%S %p          "
+    
+    # Emit a signal to indicate the start of a new chat session
     assistant_worker_thread.text_signal.emit("=====================\n||       New Chat Started       ||\n=====================",True) 
+    
+    # Log the current date and time
     timestamp = datetime.now().strftime(timestamp_format1)
     assistant_worker_thread.text_signal.emit(f"  Date: {timestamp}\n=====================", False)
 
-
+    # Notify that the assistant is online
     respond("Assistant Online",assistant_worker_thread)
     
+    # Start a loop to continuously listen for commands while the assistant is running
     while assistant_worker_thread.is_running:
+        # Listen for a command from the user
         command = listen_for_command(assistant_worker_thread)
 
+        # Define trigger keywords to identify the user's intent
         triggerKeywords = ["assistant", "tracker", "seen", "id", "have you"]
-        #print("Received command:", command)
 
+        # Process the command if it exists and contains relevant trigger keywords
         if command and any(keyword in command for keyword in triggerKeywords):
             if "show the database" in command:
+                # Open the database in a web browser
                 respond("Opening browser.",assistant_worker_thread)
                 webbrowser.open("http://localhost/phpmyadmin/index.php?route=/sql&pos=0&db=assistant&table=detections")
             elif "tracker" in command and "id" in command:
+                # Process commands related to tracking IDs
                 parts = command.split()
                 index_tracker_id = parts.index("tracker") + 2  # Adjusted index to get the part after "tracker"
 
                 if len(parts) > index_tracker_id:
+                    # Extract and convert the tracker ID from the command
                     raw_tracker_id = parts[index_tracker_id].lower()  # Convert to lowercase for case-insensitive matching
                     try:
                         tracker_id=int(raw_tracker_id)
                     except ValueError:
                         tracker_id = text2int(raw_tracker_id)
 
-                    # Use the text2int function to convert words to numbers
-                    # tracker_id = text2int(raw_tracker_id)
-
+                    # Fetch and respond with object locations based on the tracker ID
                     if tracker_id is not None:
-                        # Use the provided query to get the object locations for the given tracker ID
                         results = check_location(assistant_worker_thread,tracker_id,None,"id")
                         respond_location_results(results, "tracker_id",assistant_worker_thread, raw_tracker_id)
                     else:
@@ -302,25 +310,27 @@ def start_assistant(assistant_worker_thread,is_running):
                     respond("I'm not sure how to handle that command.",assistant_worker_thread)
 
             elif any(keyword in command for keyword in ["seen", "saw", "know", "where"]):
+                # Process commands related to object detection
                 for class_name in class_names:
                     if class_name.lower() in command.lower():
-                        # Use the provided query to get the object locations for the given class name
+                        # Fetch and respond with object locations based on the object class
                         results = check_location(assistant_worker_thread,None, class_name, "class")
                         if results:
                             respond_location_results(results, class_name,assistant_worker_thread)
                         else:
                             respond(f"No data found in the database about {class_name}",assistant_worker_thread)
-                    # else:
-                    #     respond("I'm sorry, I did not get the object name.")
-                    
+                            
             elif "clear the database" in command:
+                # Clear the database upon request
                 clear_database(assistant_worker_thread)
             elif "exit" in command:
+                # Exit the assistant loop and end the chat session
                 respond("Goodbye!",assistant_worker_thread)
                 assistant_worker_thread.text_signal.emit("Exited",True) 
                 break
             else:
+                # Respond to unrecognized commands
                 respond("Sorry, I'm not sure how to handle that command.",assistant_worker_thread)
-            
     else:
+        # Signal the end of the chat session when the assistant stops
         assistant_worker_thread.text_signal.emit("\n\n=====================\n||      Assistant Stopped.      ||\n=====================\n\n\n",True) 

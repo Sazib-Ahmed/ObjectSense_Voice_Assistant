@@ -189,20 +189,23 @@ def process_overlaps( mask1, area1, bounding_boxes1, mask2, area2, bounding_boxe
 
 # Function to find the nearest stationary object for a given mobile object
 def get_closest_stationary_object(mobile_object_boxes, stationary_object_boxes):
+    # Dictionary to store the closest stationary object for each mobile object
     closest_stationary_objects = {}
 
+    # Iterate through each mobile object and its bounding box coordinates
     for mobile_track_id, mobile_box in mobile_object_boxes.items():
-        mobile_x, mobile_y, _, _ = mobile_box
+        mobile_x, mobile_y, _, _ = mobile_box  # Extract x and y coordinates of the mobile object
 
         # Initialize variables to keep track of the closest stationary object
         closest_stationary_track_id = None
-        min_distance = float('inf')
+        min_distance = float('inf')  # Initialize minimum distance as positive infinity
 
+        # Iterate through each stationary object and its bounding box coordinates
         for stationary_track_id, stationary_box in stationary_object_boxes.items():
-            stationary_x, stationary_y, _, _ = stationary_box
+            stationary_x, stationary_y, _, _ = stationary_box  # Extract x and y coordinates of the stationary object
 
             # Calculate Euclidean distance between mobile and stationary objects
-            distance = np.sqrt((mobile_x - stationary_x)**2 + (mobile_y - stationary_y)**2)
+            distance = np.sqrt((mobile_x - stationary_x) ** 2 + (mobile_y - stationary_y) ** 2)
 
             # Update closest stationary object if distance is smaller
             if distance < min_distance:
@@ -213,6 +216,7 @@ def get_closest_stationary_object(mobile_object_boxes, stationary_object_boxes):
         closest_stationary_objects[mobile_track_id] = closest_stationary_track_id
 
     return closest_stationary_objects
+
 
 
 def process_video(widget_instance, frame_callback=None):
