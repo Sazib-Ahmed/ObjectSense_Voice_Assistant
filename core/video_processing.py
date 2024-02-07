@@ -138,7 +138,7 @@ def calculate_line_distance(line1, line2):
     return distance
 
 
-def check_relative_position(mobile_box, stationary_box):
+def determine_relative_relationship(mobile_box, stationary_box):
     close_threshold = 200
     nearby_threshold = 500
     for box1 in mobile_box:
@@ -162,27 +162,21 @@ def check_relative_position(mobile_box, stationary_box):
 
     
 # Function to process overlaps and determine spatial relationships
-def process_overlaps( mask1, area1, bounding_boxes1, mask2, area2, bounding_boxes2):
+def find_location( mask1, area1, bounding_boxes1, mask2, area2, bounding_boxes2):
 
     overlap = mask1 & mask2
-    #print(overlap)
     if torch.any(overlap):
-
         # Determine and print spatial relationship
         spatial_relationship="Overlap spatial relationship not working "
 
         spatial_relationship = determine_spatial_relationship(bounding_boxes1, area1, bounding_boxes2, area2)
-        #print(spatial_relationship)
         return spatial_relationship
+    
     else:
-
         # Determine and print spatial relationship
         relative_position="Bounding Box spatial relationship not working "
-
-        #relative_position = determine_spatial_relationship(bounding_boxes1, area1, bounding_boxes2, area2)
         
-        relative_position = check_relative_position(bounding_boxes1, bounding_boxes2)
-        # print(relative_position)
+        relative_position = determine_relative_relationship(bounding_boxes1, bounding_boxes2)
         return relative_position
 
 
@@ -338,26 +332,22 @@ def process_video(widget_instance, frame_callback=None):
             new_frame_time = time.time()
 
             # Run YOLOv8 tracking on the frame
-            results = model.track(frame, persist=True, verbose=False, imgsz=selected_pixel_size, tracker=selected_tracker, conf=selected_confidence, iou=selected_iou) #, show=True, classes=mobile_and_stationary_object_ids
+            results = model.track(frame, persist=True, verbose=False, imgsz=selected_pixel_size, tracker=selected_tracker, conf=selected_confidence, iou=selected_iou)   #, show=True, classes=mobile_and_stationary_object_ids
             # Set dictionaries to null
-            detected_class_namess = {}
             class_masks = {}
             mask_areas = {}
             bounding_boxes = {}
             stationary_objects_boxes = {}
             mobile_objects_boxes = {}
             closest_stationary_objects = {}
-            
+
 
             if results[0].boxes is not None and getattr(results[0].boxes, 'id', None) is not None:
                 boxes_xywh = results[0].boxes.xywh.cpu()
                 masks = results[0].masks.data
                 boxes = results[0].boxes.data
-                track_ids_list = results[0].boxes.id.int().cpu().tolist()
                 track_ids = results[0].boxes.id
-                class_ids_list = results[0].boxes.cls.int().cpu().tolist()
                 class_ids = results[0].boxes.cls
-                clss = results[0].boxes.cls.cpu().tolist()
 
                 for i, track_id in enumerate(track_ids):
                     track_id = int(track_id)
@@ -395,11 +385,11 @@ def process_video(widget_instance, frame_callback=None):
                 
                 if mobile_objects_boxes and stationary_objects_boxes:
                     closest_stationary_objects = get_closest_stationary_object(mobile_objects_boxes, stationary_objects_boxes)
-                    # Check if closest_stationary_objects has values
+                
+                # Check if closest_stationary_objects has values
                 if closest_stationary_objects:
                     for mobile_object_track_id, stationary_object_track_id in closest_stationary_objects.items():
-                        location = process_overlaps(class_masks[mobile_object_track_id], mask_areas[mobile_object_track_id], bounding_boxes[mobile_object_track_id],class_masks[stationary_object_track_id], mask_areas[stationary_object_track_id], bounding_boxes[stationary_object_track_id])
-                        #location = process_overlaps(detected_class_names[key],class_masks[key], mask_areas[key], bounding_boxes[key],detected_class_names[value],class_masks[value], mask_areas[value], bounding_boxes[value])
+                        location = find_location(class_masks[mobile_object_track_id], mask_areas[mobile_object_track_id], bounding_boxes[mobile_object_track_id],class_masks[stationary_object_track_id], mask_areas[stationary_object_track_id], bounding_boxes[stationary_object_track_id])
                         x_value, y_value, w_value, h_value = mobile_objects_boxes[mobile_object_track_id]
                         try:
                             cursor.execute("SELECT * FROM detections WHERE mobile_object_tracker_id = %s", (mobile_object_track_id,))
@@ -416,10 +406,10 @@ def process_video(widget_instance, frame_callback=None):
                                     (mobile_object_track_id, detected_class_ids[mobile_object_track_id], detected_class_names[mobile_object_track_id],stationary_object_track_id,detected_class_ids[stationary_object_track_id], detected_class_names[stationary_object_track_id], x_value, y_value, w_value, h_value, location, datetime.now())
                                 )
                             db.commit()
+
                         except Error as e:
                             print(f"Error interacting with database: {e}")
 
-                        
                         print(detected_class_names[mobile_object_track_id],mobile_object_track_id,location,detected_class_names[stationary_object_track_id],stationary_object_track_id)
 
 
