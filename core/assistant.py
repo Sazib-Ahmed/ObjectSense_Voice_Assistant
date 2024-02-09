@@ -135,8 +135,9 @@ def respond_location_results(results, object_type, assistant_worker_thread, obje
     # Send the response to the respond method
     respond(response_list, assistant_worker_thread)
 
-def check_location(assistant_worker_thread,tracker_id=None, obj_class=None, type=None):
+def check_location(assistant_worker_thread, tracker_id=None, obj_class=None, type=None):
     try:
+        # Establish a connection to the MySQL database
         connection = mysql.connector.connect(
             host="127.0.0.1",
             user="root",
@@ -144,10 +145,14 @@ def check_location(assistant_worker_thread,tracker_id=None, obj_class=None, type
             database="assistant"
         )
         cursor = connection.cursor()
+        # Check if the function is called to retrieve data by tracker ID
         if tracker_id is not None and obj_class is None and type == "id":
+            # Execute SQL query to fetch all detections with the specified tracker ID
             cursor.execute("SELECT * FROM detections WHERE mobile_object_tracker_id = %s", (tracker_id,))
             results = cursor.fetchall()  # Fetch all rows
+        # Check if the function is called to retrieve data by object class
         elif tracker_id is None and obj_class is not None and type == "class":
+            # Execute SQL query to fetch all detections with the specified object class, grouping by stationary object class ID
             cursor.execute("""
                 SELECT *
                 FROM detections
@@ -155,9 +160,10 @@ def check_location(assistant_worker_thread,tracker_id=None, obj_class=None, type
                 GROUP BY stationary_object_class_id
                 ORDER BY stationary_object_class_id, MAX(timestamp) DESC
                 """, (obj_class,))
-
             results = cursor.fetchall()  # Fetch all rows
+        # Check if the function is called to retrieve all detection records
         elif tracker_id is None and obj_class is None and type == "all":
+            # Execute SQL query to fetch all detections
             cursor.execute("SELECT * FROM detections")
             results = cursor.fetchall()  # Fetch all rows
         else:
@@ -167,12 +173,15 @@ def check_location(assistant_worker_thread,tracker_id=None, obj_class=None, type
 
     except mysql.connector.Error as error:
         print("Error:", error)
-        respond("Unable to connect to the database.",assistant_worker_thread)
+        # If there's an error connecting to the database, notify the user via the assistant worker thread
+        respond("Unable to connect to the database.", assistant_worker_thread)
         return None
     finally:
+        # Close the cursor and database connection when finished
         if connection.is_connected():
             cursor.close()
             connection.close()
+
 
 def clear_database(assistant_worker_thread):
     try:
@@ -272,6 +281,8 @@ def convert_text_to_integer(textnum, word_to_num={}):
 
     # Return the total numerical value derived from the input text
     return result
+
+
 
 
 
