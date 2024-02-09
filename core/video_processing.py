@@ -18,63 +18,63 @@ from datetime import datetime
 def sep(mes="---"):
     print("==================================="+mes+"===================================")
 
-# Function to determine spatial relationship
-def determine_spatial_relationship( boxes1, area1, boxes2, area2):
-    for box1 in boxes1:
-        for box2 in boxes2:
-            x1, y1, x2, y2 = box1[:4]
-            x3, y3, x4, y4 = box2[:4]
+# Function to determine spatial relationship between two bounding boxes
+def determine_spatial_relationship(box1, area1, box2, area2):
+    # Extract coordinates of the bounding boxes
+    x1, y1, x2, y2 = box1[:4]
+    x3, y3, x4, y4 = box2[:4]
 
-            horizontal_overlap = (x1 < x4 and x2 > x3)
-            vertical_overlap = (y1 < y4 and y2 > y3)
+    # Check for horizontal and vertical overlap between the bounding boxes
+    horizontal_overlap = (x1 < x4 and x2 > x3)
+    vertical_overlap = (y1 < y4 and y2 > y3)
 
-            # Check if one box is completely inside the other
-            is_box1_inside_box2 = x1 >= x3 and x2 <= x4 and y1 >= y3 and y2 <= y4
-            is_box2_inside_box1 = x3 >= x1 and x4 <= x2 and y3 >= y1 and y4 <= y2
+    # Check if one box is completely inside the other
+    is_box1_inside_box2 = x1 >= x3 and x2 <= x4 and y1 >= y3 and y2 <= y4
+    is_box2_inside_box1 = x3 >= x1 and x4 <= x2 and y3 >= y1 and y4 <= y2
 
-            if is_box1_inside_box2:
-                if area1 < area2:
-                    return "on"
-                else:
-                    return "surrounds"
-            elif is_box2_inside_box1:
-                if area2 < area1:
-                    return "on"
-                else:
-                    return "surrounds"
+    # Determine spatial relationship based on containment
+    if is_box1_inside_box2:
+        if area1 < area2:
+            return "on"  # Box 1 is completely inside Box 2
+        else:
+            return "surrounds"  # Box 1 completely surrounds Box 2
+    elif is_box2_inside_box1:
+        if area2 < area1:
+            return "on"  # Box 2 is completely inside Box 1
+        else:
+            return "surrounds"  # Box 2 completely surrounds Box 1
 
-            # Calculate overlap percentage
-            overlap_width = min(x2, x4) - max(x1, x3)
-            overlap_height = min(y2, y4) - max(y1, y3)
-            overlap_area = max(overlap_width, 0) * max(overlap_height, 0)
+    # Calculate overlap percentage and size difference
+    overlap_width = min(x2, x4) - max(x1, x3)
+    overlap_height = min(y2, y4) - max(y1, y3)
+    overlap_area = max(overlap_width, 0) * max(overlap_height, 0)
+    size_difference = abs(area1 - area2) / max(area1, area2)
 
-            # Check size difference
-            size_difference = abs(area1 - area2) / max(area1, area2)
+    # Determine the spatial relationship based on size, position, and overlap
+    if horizontal_overlap and vertical_overlap:
+        if overlap_area / min(area1, area2) > 0.5:  # Significant overlap
+            if area1 > area2:
+                return "covering"  # Box 1 is covering Box 2
+            else:
+                return "covering"  # Box 2 is covering Box 1
+        else:
+            if y1 < y3:
+                return "above"  # Box 1 is above Box 2
+            else:
+                return "below"  # Box 1 is below Box 2
+    elif horizontal_overlap:
+        if size_difference > 0.5:
+            return "beside"  # Boxes are beside each other
+        else:
+            return "beside"  # Boxes are beside each other
+    elif vertical_overlap:
+        if size_difference > 0.5:
+            return "near"  # Boxes are near each other
+        else:
+            return "near"  # Boxes are near each other
 
-            # Determine the spatial relationship based on size, position, and overlap
-            if horizontal_overlap and vertical_overlap:
-                if overlap_area / min(area1, area2) > 0.5:  # Significant overlap
-                    if area1 > area2:
-                        return "covering"
-                    else:
-                        return "covering"
-                else:
-                    if y1 < y3:
-                        return "above"
-                    else:
-                        return "below"
-            elif horizontal_overlap:
-                if size_difference > 0.5:
-                    return "beside"
-                else:
-                    return "beside"
-            elif vertical_overlap:
-                if size_difference > 0.5:
-                    return "near"
-                else:
-                    return "near"
+    return "around"  # No significant spatial relationship
 
-    return "around"
 
 
 
