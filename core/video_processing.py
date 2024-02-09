@@ -88,7 +88,9 @@ def do_bounding_boxes_overlap(box1, box2):
     return (x1 < x4 and x2 > x3) and (y1 < y4 and y2 > y3)
 
 
+# Function to calculate the Euclidean distance between two bounding boxes represented as lines.
 def calculate_distance(box1, box2):
+    # Extract coordinates and dimensions of the bounding boxes
     x1, y1, w1, h1 = box1[:4].detach().numpy()
     x2, y2, w2, h2 = box2[:4].detach().numpy()
 
@@ -112,33 +114,36 @@ def calculate_distance(box1, box2):
     line8_start = (x2, y2 + h2)
     line8_end = (x2 + w2, y2 + h2)
 
-    # List of line segments
+    # List of line segments for both bounding boxes
     lines1 = [(line1_start, line1_end), (line2_start, line2_end), (line3_start, line3_end), (line4_start, line4_end)]
     lines2 = [(line5_start, line5_end), (line6_start, line6_end), (line7_start, line7_end), (line8_start, line8_end)]
 
     distances = []
 
+    # Iterate through each pair of lines and calculate the distance
     for line1 in lines1:
         for line2 in lines2:
             distance = calculate_line_distance(line1, line2)
             distances.append(distance)
 
-    # print(distances)
     return distances
 
+# Function to calculate the distance between two line segments using the formula for the minimum distance between two lines.
 def calculate_line_distance(line1, line2):
     x1, y1 = line1[0]
     x2, y2 = line1[1]
     x3, y3 = line2[0]
     x4, y4 = line2[1]
 
-    # Calculate the minimum distance between two lines
+    # Calculate the numerator and denominator for the formula of minimum distance between two lines
     numerator = abs((x2 - x1)*(y3 - y4) + (x3 - x4)*(y2 - y1) + (x4 - x3)*(y1 - y3))
     denominator = ((x2 - x1)**2 + (y2 - y1)**2)**0.5
 
+    # Calculate the distance using the formula
     distance = numerator / denominator
 
     return distance
+
 
 
 # Function to determine the relative relationship between a mobile object and a stationary object based on their minimum distance.
