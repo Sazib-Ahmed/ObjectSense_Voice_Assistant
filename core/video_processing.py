@@ -141,20 +141,26 @@ def calculate_line_distance(line1, line2):
     return distance
 
 
+# Function to determine the relative relationship between a mobile object and a stationary object based on their minimum distance.
 def determine_relative_relationship(mobile_box, stationary_box):
-    close_threshold = 200
-    nearby_threshold = 500
+    close_threshold = 200  # Threshold for considering objects as "close"
+    nearby_threshold = 500  # Threshold for considering objects as "nearby"
+    # Iterate through each bounding box of the mobile object
     for box1 in mobile_box:
+        # Iterate through each bounding box of the stationary object
         for box2 in stationary_box:
+            # Calculate the distances between the two objects
             distances = calculate_distance(box1[:4], box2[:4])
+            # Find the minimum distance
             min_distance = min(distances)
-
+            # Determine the relative relationship based on the minimum distance
             if min_distance < close_threshold:
-                return f"Close to"
+                return f"Close to"  # Mobile object is close to the stationary object
             elif min_distance < nearby_threshold:
-                return f"Nearby"
+                return f"Nearby"  # Mobile object is nearby the stationary object
             else:
-                return "Far away from"
+                return "Far away from"  # Mobile object is far away from the stationary object
+
 
     
 # Function to process overlaps and determine relationships
