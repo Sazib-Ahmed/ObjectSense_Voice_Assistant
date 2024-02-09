@@ -156,7 +156,6 @@ def determine_relative_relationship(mobile_box, stationary_box):
     
 # Function to process overlaps and determine relationships
 def find_location( mask1, area1, bounding_boxes1, mask2, area2, bounding_boxes2):
-
     overlap = mask1 & mask2
     if torch.any(overlap):
         # Determine spatial relationship
