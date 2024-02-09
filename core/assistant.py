@@ -210,53 +210,69 @@ def is_number(x):
     return True
 
 def text2int(textnum, numwords={}):
+    # Define dictionaries to map words to their corresponding numerical values
     units = {
-        'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4,'for': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9,
+        'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'for': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9,
         'ten': 10, 'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14, 'fifteen': 15, 'sixteen': 16,
         'seventeen': 17, 'eighteen': 18, 'nineteen': 19
     }
     tens = {'twenty': 20, 'thirty': 30, 'forty': 40, 'fifty': 50, 'sixty': 60, 'seventy': 70, 'eighty': 80, 'ninety': 90}
     scales = {'hundred': 100, 'thousand': 1000, 'million': 1000000, 'billion': 1000000000, 'trillion': 1000000000000}
 
+    # Update the default numwords dictionary with the defined units, tens, and scales dictionaries
     if not numwords:
         numwords.update(units)
         numwords.update(tens)
         numwords.update(scales)
 
+    # Initialize variables for tracking the current and total numerical values
     current = result = 0
     onnumber = False
     lastunit = False
     lastscale = False
 
+    # Define helper functions to check if a word is a number and retrieve its numerical value
     def is_numword(x):
         return x.replace('-', '').lower() in numwords
 
     def from_numword(x):
         return numwords[x.replace('-', '').lower()]
 
+    # Iterate through each word in the input text
     for word in textnum.replace('-', ' ').split():
+        # Check if the word represents a scale (e.g., hundred, thousand, million)
         if word in scales:
             lastscale = True
+            # If a number was encountered before the scale, update the result with the current value
             if onnumber:
                 current = max(1, current)
                 result += current
+            # Reset the current value for the next number
             current = 0
+        # Check if the word represents a numerical value
         elif is_numword(word):
             onnumber = True
+            # Calculate the increment based on the numerical value of the word
             increment = from_numword(word)
+            # Update the current value by multiplying it by 10 and adding the increment
             current = current * 10 + increment
             lastunit = True
+        # Handle the case when 'and' is used in a number (e.g., one hundred and ten)
         elif word == 'and' and not lastscale:
             lastscale = True
+        # Reset the onnumber flag when a unit (e.g., hundred, thousand) is encountered
         elif lastunit:
             onnumber = False
             lastunit = False
 
+    # Add the current value to the result if a number was the last word in the text
     if onnumber:
         current = max(1, current)
         result += current
 
+    # Return the total numerical value derived from the input text
     return result
+
 
 
 def start_assistant(assistant_worker_thread,is_running):
@@ -334,3 +350,5 @@ def start_assistant(assistant_worker_thread,is_running):
     else:
         # Signal the end of the chat session when the assistant stops
         assistant_worker_thread.text_signal.emit("\n\n=====================\n||      Assistant Stopped.      ||\n=====================\n\n\n",True) 
+
+
