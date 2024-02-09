@@ -102,20 +102,29 @@ def respond(text,assistant_worker_thread):
 #         # Handle the error as needed
 
 
-# Helper function to respond with location information
+
 def respond_location_results(results, object_type, assistant_worker_thread, object_identifier=None):
+    # Initialize an empty string to store the response
     response_list = ""
 
+    # Check if there are any results from the database query
     if results:
+        # Get the number of objects detected
         num_objects = len(results)
+        # Initialize an empty list to store object descriptions
         object_descriptions = []
 
+        # Iterate through each result to extract location information
         for result in results:
-            location = result[7]
+            location = result[7]  # Assuming location information is stored at index 7
+            # Check if location information is available
             if location is not None:
-                object_descriptions.append(f"{location} the {result[6]}")
+                # Construct a descriptive string for each object
+                object_descriptions.append(f"{location} the {result[6]}")  # Assuming object class is at index 6
 
+        # Generate the response based on the number of objects detected
         if num_objects == 1:
+            # Handle singular case
             if object_type == "tracker_id":
                 response_list += f"I have seen the tracker ID {object_identifier}. I can see that it's a {result[3]} and it's {object_descriptions[0]}. "
             elif object_identifier is not None:
@@ -123,17 +132,20 @@ def respond_location_results(results, object_type, assistant_worker_thread, obje
             else:
                 response_list += f"I have seen {object_type}. It is {object_descriptions[0]}. "
         elif num_objects > 1:
+            # Handle plural case
             response_list += f"I have seen {num_objects} {object_type}s. "
             for i in range(num_objects):
                 response_list += f"One is {object_descriptions[i]}. "
         else:
+            # Handle case when no objects are detected
             response_list += f"I haven't seen any {object_type}. "
-
     else:
+        # Handle case when no results are returned from the database query
         response_list += f"I haven't seen any {object_type}. "
 
-    # Send the response to the respond method
+    # Send the generated response to the respond method for further processing
     respond(response_list, assistant_worker_thread)
+
 
 def check_location(assistant_worker_thread, tracker_id=None, obj_class=None, type=None):
     try:
