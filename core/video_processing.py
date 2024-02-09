@@ -145,18 +145,11 @@ def determine_relative_relationship(mobile_box, stationary_box):
         for box2 in stationary_box:
             distances = calculate_distance(box1[:4], box2[:4])
             min_distance = min(distances)
-            # print(distances)
-            # print(min_distance)
 
             if min_distance < close_threshold:
-                #position = get_relative_position(box1[:4], box2[:4], distances)
-                #return f"Close to {position}"
                 return f"Close to"
             elif min_distance < nearby_threshold:
-                #position = get_relative_position(box1[:4], box2[:4], distances)
-                #return f"Nearby {position}"
                 return f"Nearby"
-            
             else:
                 return "Far away from"
 
@@ -234,13 +227,12 @@ def process_video(widget_instance, frame_callback=None):
         "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
     )
 
-    # all_class_ids = tuple(range(80))
-
-
     # Define moving object
     mobile_object_ids=(15,16,24,25,26,27,28,32,39,41,42,43,44,45,63,64,65,66,67,73,74,75,76,77,78,79)
+
     # Define stationary object
     stationary_object_ids=(13,56,57,58,59,60,62,68,69,72)
+
 
     # mobile_and_stationary_object_ids= [13, 15, 16, 24, 25, 26, 27, 28, 32, 39, 41, 42, 43, 44, 45, 56, 57, 58, 59, 60, 62, 63, 64, 65, 66, 67, 68, 69, 72, 73, 74, 75, 76, 77, 78, 79] #list(mobile_object_ids) + list(stationary_object_ids)
 
