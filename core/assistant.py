@@ -360,7 +360,7 @@ def start_assistant(assistant_worker_thread,is_running):
                     try:
                         tracker_id=int(raw_tracker_id)
                     except ValueError:
-                        tracker_id = text2int(raw_tracker_id)
+                        tracker_id = convert_text_to_integer(raw_tracker_id)
 
                     # Fetch and respond with object locations based on the tracker ID
                     if tracker_id is not None:
