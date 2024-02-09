@@ -154,23 +154,24 @@ def determine_relative_relationship(mobile_box, stationary_box):
                 return "Far away from"
 
     
-# Function to process overlaps and determine spatial relationships
+# Function to process overlaps and determine relationships
 def find_location( mask1, area1, bounding_boxes1, mask2, area2, bounding_boxes2):
 
     overlap = mask1 & mask2
     if torch.any(overlap):
-        # Determine and print spatial relationship
+        # Determine spatial relationship
         spatial_relationship="Overlap spatial relationship not working "
 
         spatial_relationship = determine_spatial_relationship(bounding_boxes1, area1, bounding_boxes2, area2)
         return spatial_relationship
     
     else:
-        # Determine and print spatial relationship
-        relative_position="Bounding Box spatial relationship not working "
+        # Determine relative relationship
+        relative_relationship="Bounding Box spatial relationship not working "
         
-        relative_position = determine_relative_relationship(bounding_boxes1, bounding_boxes2)
-        return relative_position
+        relative_relationship = determine_relative_relationship(bounding_boxes1, bounding_boxes2)
+        return relative_relationship
+
 
 
 
@@ -207,7 +208,7 @@ def get_closest_stationary_object(mobile_object_boxes, stationary_object_boxes):
 
 
 def process_video(widget_instance, frame_callback=None):
-    
+
     # class names present in the COCO dataset
     class_names = (
         "person", "bicycle", "car", "motorcycle", "airplane",
@@ -235,12 +236,6 @@ def process_video(widget_instance, frame_callback=None):
     stationary_object_ids=(13,56,57,58,59,60,62,68,69,72)
 
 
-    # mobile_and_stationary_object_ids= [13, 15, 16, 24, 25, 26, 27, 28, 32, 39, 41, 42, 43, 44, 45, 56, 57, 58, 59, 60, 62, 63, 64, 65, 66, 67, 68, 69, 72, 73, 74, 75, 76, 77, 78, 79] #list(mobile_object_ids) + list(stationary_object_ids)
-
-
-
-    # Load the YOLOv8 model
-
     selected_video_source = widget_instance.selected_video_source  
     selected_video_file = widget_instance.selected_video_file
     selected_live_video_input = widget_instance.selected_live_video_input 
@@ -267,6 +262,7 @@ def process_video(widget_instance, frame_callback=None):
     if not selected_iou:
         selected_iou=0.7
 
+    # Load the YOLOv8 model
     model = YOLO(selected_detection_model)
     
 
