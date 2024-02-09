@@ -397,25 +397,74 @@ def process_video(widget_instance, frame_callback=None):
                             cursor.execute("SELECT * FROM detections WHERE mobile_object_tracker_id = %s", (mobile_object_track_id,))
                             existing_record = cursor.fetchone()
 
+                            # Update or insert the detection record into the database
                             if existing_record:
                                 cursor.execute(
-                                    "UPDATE detections SET mobile_object_class_id = %s, mobile_object_class_name = %s, stationary_object_tracker_id = %s , stationary_object_class_id = %s, stationary_object_class_name = %s, x = %s, y = %s, width = %s, height = %s, location = %s, timestamp = %s WHERE mobile_object_tracker_id = %s",
-                                    (detected_class_ids[mobile_object_track_id], detected_class_names[mobile_object_track_id],stationary_object_track_id,detected_class_ids[stationary_object_track_id], detected_class_names[stationary_object_track_id], x_value, y_value, w_value, h_value, location, datetime.now(), mobile_object_track_id)
+                                    "UPDATE detections SET mobile_object_class_id = %s,"
+                                    " mobile_object_class_name = %s,"
+                                    " stationary_object_tracker_id = %s,"
+                                    " stationary_object_class_id = %s,"
+                                    " stationary_object_class_name = %s,"
+                                    " x = %s,"
+                                    " y = %s,"
+                                    " width = %s,"
+                                    " height = %s,"
+                                    " location = %s,"
+                                    " timestamp = %s"
+                                    " WHERE mobile_object_tracker_id = %s",
+                                    (
+                                        detected_class_ids[mobile_object_track_id],
+                                        detected_class_names[mobile_object_track_id],
+                                        stationary_object_track_id,
+                                        detected_class_ids[stationary_object_track_id],
+                                        detected_class_names[stationary_object_track_id],
+                                        x_value,
+                                        y_value,
+                                        w_value,
+                                        h_value,
+                                        location,
+                                        datetime.now(),
+                                        mobile_object_track_id
+                                    )
                                 )
                             else:
                                 cursor.execute(
-                                    "INSERT INTO detections (mobile_object_tracker_id, mobile_object_class_id, mobile_object_class_name, stationary_object_tracker_id, stationary_object_class_id, stationary_object_class_name, x, y, width, height, location, timestamp) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                                    (mobile_object_track_id, detected_class_ids[mobile_object_track_id], detected_class_names[mobile_object_track_id],stationary_object_track_id,detected_class_ids[stationary_object_track_id], detected_class_names[stationary_object_track_id], x_value, y_value, w_value, h_value, location, datetime.now())
+                                    "INSERT INTO detections (mobile_object_tracker_id,"
+                                    " mobile_object_class_id,"
+                                    " mobile_object_class_name,"
+                                    " stationary_object_tracker_id,"
+                                    " stationary_object_class_id,"
+                                    " stationary_object_class_name,"
+                                    " x,"
+                                    " y,"
+                                    " width,"
+                                    " height,"
+                                    " location,"
+                                    " timestamp)"
+                                    " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                                    (
+                                        mobile_object_track_id,
+                                        detected_class_ids[mobile_object_track_id],
+                                        detected_class_names[mobile_object_track_id],
+                                        stationary_object_track_id,
+                                        detected_class_ids[stationary_object_track_id],
+                                        detected_class_names[stationary_object_track_id],
+                                        x_value,
+                                        y_value,
+                                        w_value,
+                                        h_value,
+                                        location,
+                                        datetime.now()
+                                    )
                                 )
+
                             db.commit()
 
                         except Error as e:
                             print(f"Error interacting with database: {e}")
 
                         print(detected_class_names[mobile_object_track_id],mobile_object_track_id,location,detected_class_names[stationary_object_track_id],stationary_object_track_id)
-
-
-                
+                        
                 annotator = results[0].plot()
             else:
                 # If no objects detected, update annotator to the original frame
