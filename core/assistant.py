@@ -35,51 +35,73 @@ class_names = (
 )
 
 def listen_for_command(assistant_worker_thread, timeout=5):
+    # Initialize a recognizer object
     recognizer = sr.Recognizer()
 
+    # Use the microphone as the audio source
     with sr.Microphone() as source:
         try:
-            print("Adjusting for ambient noise...")
+            # Adjust for ambient noise
             recognizer.adjust_for_ambient_noise(source)
+            # Indicate that the system is listening for commands
             print("Listening for commands...")
+            # Get the current timestamp
             timestamp = datetime.now().strftime(timestamp_format)
+            # Emit a signal to update the user interface with the listening status
             message = f"{timestamp}: Listening for commands for 3 seconds..."
             assistant_worker_thread.text_signal.emit(message, False)
             
-            audio = recognizer.listen(source, timeout=2, phrase_time_limit=3)
-
+            # Listen for audio input with a timeout
+            audio = recognizer.listen(source, timeout=timeout, phrase_time_limit=3)
+            # Attempt to recognize speech using Google's speech recognition service
             command = recognizer.recognize_google(audio)
-            # command = recognizer.recognize_sphinx(audio)
 
+            # Log the recognized command
             print("You said:", command)
+            # Prepare the command for display in the user interface
             mes = "You: " + command
+            # Get the current timestamp
             timestamp = datetime.now().strftime(timestamp_format)
+            # Emit a signal to update the user interface with the recognized command
             assistant_worker_thread.text_signal.emit(f"\n-------------------\n{timestamp}\n{mes}\n-------------------", False)
 
+            # Return the recognized command in lowercase
             return command.lower()
 
         except sr.UnknownValueError:
+            # Handle cases where speech cannot be understood
             print("Could not understand audio. Please try again.")
             return None
 
         except sr.RequestError:
+            # Handle cases where access to the Google Speech Recognition API fails
             print("Unable to access the Google Speech Recognition API.")
             return None
 
         except sr.WaitTimeoutError:
+            # Handle cases where no command is detected within the specified timeout duration
             print("Listening timeout. No command detected.")
             return None
 
-def respond(text,assistant_worker_thread):
-    print("Assistant Said:", text)
-    mes = "Assistant: "+text
-    sep()
-    tts = gTTS(text=text, lang='en')
-    tts.save("response.mp3")
-    timestamp = datetime.now().strftime(timestamp_format)
-    assistant_worker_thread.text_signal.emit(f"\n-------------------\n{timestamp}\n{mes}\n-------------------", False)
 
-    subprocess.run(["afplay", "response.mp3"])  # Use afplay for audio playback on macOS
+def respond(text, assistant_worker_thread):
+    # Log the assistant's response
+    print("Assistant Said:", text)
+    # Prepare the assistant's response for display in the user interface
+    mes = "Assistant: " + text
+    # Call a function to print separator lines for better readability
+    sep()  
+    # Convert the text response into speech using Google's Text-to-Speech service
+    tts = gTTS(text=text, lang='en')
+    # Save the speech as an audio file
+    tts.save("response.mp3")
+    # Get the current timestamp
+    timestamp = datetime.now().strftime(timestamp_format)
+    # Emit a signal to update the user interface with the assistant's response
+    assistant_worker_thread.text_signal.emit(f"\n-------------------\n{timestamp}\n{mes}\n-------------------", False)
+    # Play the generated audio response using the system's audio player (afplay for macOS)
+    subprocess.run(["afplay", "response.mp3"])
+
     
 # def respond(text, assistant_worker_thread):
 #     try:
