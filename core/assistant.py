@@ -209,7 +209,7 @@ def is_number(x):
         return False
     return True
 
-def text2int(textnum, numwords={}):
+def convert_text_to_integer(textnum, word_to_num={}):
     # Define dictionaries to map words to their corresponding numerical values
     units = {
         'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'for': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9,
@@ -219,11 +219,11 @@ def text2int(textnum, numwords={}):
     tens = {'twenty': 20, 'thirty': 30, 'forty': 40, 'fifty': 50, 'sixty': 60, 'seventy': 70, 'eighty': 80, 'ninety': 90}
     scales = {'hundred': 100, 'thousand': 1000, 'million': 1000000, 'billion': 1000000000, 'trillion': 1000000000000}
 
-    # Update the default numwords dictionary with the defined units, tens, and scales dictionaries
-    if not numwords:
-        numwords.update(units)
-        numwords.update(tens)
-        numwords.update(scales)
+    # Update the default word_to_num dictionary with the defined units, tens, and scales dictionaries
+    if not word_to_num:
+        word_to_num.update(units)
+        word_to_num.update(tens)
+        word_to_num.update(scales)
 
     # Initialize variables for tracking the current and total numerical values
     current = result = 0
@@ -233,10 +233,10 @@ def text2int(textnum, numwords={}):
 
     # Define helper functions to check if a word is a number and retrieve its numerical value
     def is_numword(x):
-        return x.replace('-', '').lower() in numwords
+        return x.replace('-', '').lower() in word_to_num
 
     def from_numword(x):
-        return numwords[x.replace('-', '').lower()]
+        return word_to_num[x.replace('-', '').lower()]
 
     # Iterate through each word in the input text
     for word in textnum.replace('-', ' ').split():
@@ -272,6 +272,7 @@ def text2int(textnum, numwords={}):
 
     # Return the total numerical value derived from the input text
     return result
+
 
 
 
