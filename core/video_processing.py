@@ -207,7 +207,7 @@ def get_closest_stationary_object(mobile_object_boxes, stationary_object_boxes):
 
 
 def process_video(widget_instance, frame_callback=None):
-    # class names present in the model
+    # class names present in the COCO dataset
     class_names = (
         "person", "bicycle", "car", "motorcycle", "airplane",
         "bus", "train", "truck", "boat", "traffic light",
