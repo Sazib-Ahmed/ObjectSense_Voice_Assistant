@@ -47,7 +47,7 @@ class Widget(QWidget):
 
         self.detection_video_display = QLabel("Video")
             # Load the initial image using OpenCV
-        self.initial_image = cv2.imread("assets/video_label.JPG")
+        self.initial_image = cv2.imread("assets/video_label.pny")
 
         # Check if the image is loaded successfully
         if self.initial_image is not None:
