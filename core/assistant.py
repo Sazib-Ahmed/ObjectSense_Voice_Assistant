@@ -48,11 +48,11 @@ def listen_for_command(assistant_worker_thread, timeout=5):
             # Get the current timestamp
             timestamp = datetime.now().strftime(timestamp_format)
             # Emit a signal to update the user interface with the listening status
-            message = f"{timestamp}: Listening for commands for 3 seconds..."
+            message = f"{timestamp}: Listening for commands for 4 seconds..."
             assistant_worker_thread.text_signal.emit(message, False)
             
             # Listen for audio input with a timeout
-            audio = recognizer.listen(source, timeout=timeout, phrase_time_limit=3)
+            audio = recognizer.listen(source, timeout=timeout, phrase_time_limit=4)
             # Attempt to recognize speech using Google's speech recognition service
             command = recognizer.recognize_google(audio)
 

@@ -1,5 +1,5 @@
 from collections import defaultdict
-
+import os
 import torch
 import cv2
 import numpy as np
@@ -19,6 +19,7 @@ def sep(mes="---"):
     print("==================================="+mes+"===================================")
 
 # Function to determine spatial relationship between two sets of bounding boxes
+# Box 1 is the mobile object and box 2 is the stationary object
 def determine_spatial_relationship(boxes1, area1, boxes2, area2):
     # Iterate through each bounding box in the first set
     for box1 in boxes1:
@@ -82,6 +83,7 @@ def determine_spatial_relationship(boxes1, area1, boxes2, area2):
 
 
 # Function to check if bounding boxes overlap
+# Box 1 is the mobile object and box 2 is the stationary object
 def do_bounding_boxes_overlap(box1, box2):
     x1, y1, x2, y2 = box1[:4]
     x3, y3, x4, y4 = box2[:4]
@@ -89,6 +91,7 @@ def do_bounding_boxes_overlap(box1, box2):
 
 
 # Function to calculate the Euclidean distance between two bounding boxes represented as lines.
+# Box 1 is the mobile object and box 2 is the stationary object
 def calculate_distance(box1, box2):
     # Extract coordinates and dimensions of the bounding boxes
     x1, y1, w1, h1 = box1[:4].detach().numpy()
@@ -147,6 +150,7 @@ def calculate_line_distance(line1, line2):
 
 
 # Function to determine the relative relationship between a mobile object and a stationary object based on their minimum distance.
+# Box 1 is the mobile object and box 2 is the stationary object
 def determine_relative_relationship(mobile_box, stationary_box):
     close_threshold = 200  # Threshold for considering objects as "close"
     nearby_threshold = 500  # Threshold for considering objects as "nearby"
@@ -169,6 +173,7 @@ def determine_relative_relationship(mobile_box, stationary_box):
 
     
 # Function to process overlaps and determine relationships
+# Box 1 is the mobile object and box 2 is the stationary object
 def find_location( mask1, area1, bounding_boxes1, mask2, area2, bounding_boxes2):
     overlap = mask1 & mask2
     if torch.any(overlap):
@@ -476,11 +481,24 @@ def process_video(widget_instance, frame_callback=None):
 
             else:
                 annotator = frame.copy()
+            
+            #--------------------------------------------------------------
+            # Define the output folder path
+            output_folder = "output_frames/"
+
+            # Inside the try block where the frame is processed
+            annotator_output_path = os.path.join(output_folder, f"frame_{frame_num}.jpg")
+            print(annotator_output_path)
+            try:
+                cv2.imwrite(annotator_output_path, annotator)
+            except Exception as e:
+                print(f"An error occurred while saving the annotated frame: {e}")
+            #--------------------------------------------------------------
 
             # Calculate and display FPS
             fps = 1 / (new_frame_time - prev_frame_time)
             prev_frame_time = new_frame_time
-            cv2.putText(annotator, f"FPS: {fps:.2f}", (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 3,
+            cv2.putText(annotator, f"FPS: {fps:.2f}", (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3,
                         cv2.LINE_AA)
 
             # Show annotated frame

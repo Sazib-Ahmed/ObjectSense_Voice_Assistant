@@ -46,18 +46,18 @@ class Widget(QWidget):
         self.detection_grid_layout.addWidget(self.detection_label, 0, 0, 1, 4)  # Set column span to 3
 
         self.detection_video_display = QLabel("Video")
-            # Load the initial image using OpenCV
-        self.initial_image = cv2.imread("assets/video_label.pny")
+        # Load the initial image using OpenCV
+        self.initial_image = cv2.imread("assets/video_label.png")
 
         # Check if the image is loaded successfully
         if self.initial_image is not None:
-            #Convert the OpenCV image to QPixmap
-            height, width, channel = self.initial_image.shape
-            # height = 480
-            # width = 640
+            # Convert the OpenCV image to RGB format
+            rgb_image = cv2.cvtColor(self.initial_image, cv2.COLOR_BGR2RGB)
 
+            # Convert the RGB image to a QImage
+            height, width, channel = rgb_image.shape
             bytes_per_line = 3 * width
-            q_image = QImage(self.initial_image.data, width, height, bytes_per_line, QImage.Format_RGB888)
+            q_image = QImage(rgb_image.data, width, height, bytes_per_line, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(q_image)
 
             # Set the QPixmap as the label's pixmap and resize the label
@@ -69,6 +69,7 @@ class Widget(QWidget):
         else:
             # If the image fails to load, print an error message
             print("Failed to load the initial image.")
+
         self.detection_video_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.detection_video_display.setAlignment(Qt.AlignCenter)
         self.detection_grid_layout.addWidget(self.detection_video_display, 1, 0, 4, 4)
