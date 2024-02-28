@@ -484,7 +484,7 @@ def process_video(widget_instance, frame_callback=None):
             
             #--------------------------------------------------------------
             # Define the output folder path
-            output_folder = "output_frames/"
+            output_folder = "output_frames_chair2/"
 
             # Inside the try block where the frame is processed
             annotator_output_path = os.path.join(output_folder, f"frame_{frame_num}.jpg")
