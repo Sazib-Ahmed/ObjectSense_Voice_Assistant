@@ -43,11 +43,6 @@ def determine_spatial_relationship(boxes1, area1, boxes2, area2):
                     return "on"  # Box 1 is completely inside Box 2
                 else:
                     return "surrounds"  # Box 1 completely surrounds Box 2
-            elif is_box2_inside_box1:
-                if area2 < area1:
-                    return "on"  # Box 2 is completely inside Box 1
-                else:
-                    return "surrounds"  # Box 2 completely surrounds Box 1
 
             # Calculate overlap percentage and size difference
             overlap_width = min(x2, x4) - max(x1, x3)
@@ -60,8 +55,6 @@ def determine_spatial_relationship(boxes1, area1, boxes2, area2):
                 if overlap_area / min(area1, area2) > 0.5:  # Significant overlap
                     if area1 > area2:
                         return "covering"  # Box 1 is covering Box 2
-                    else:
-                        return "covering"  # Box 2 is covering Box 1
                 else:
                     if y1 < y3:
                         return "above"  # Box 1 is above Box 2
@@ -93,29 +86,33 @@ def do_bounding_boxes_overlap(box1, box2):
 # Function to calculate the Euclidean distance between two bounding boxes represented as lines.
 # Box 1 is the mobile object and box 2 is the stationary object
 def calculate_distance(box1, box2):
-    # Extract coordinates and dimensions of the bounding boxes
-    x1, y1, w1, h1 = box1[:4].detach().numpy()
-    x2, y2, w2, h2 = box2[:4].detach().numpy()
+    # Extract coordinates of the bounding boxes in (left, top, right, bottom) format
+    x1, y1, x3, y3 = box1[:4].detach().numpy()
+    x2, y2, x4, y4 = box2[:4].detach().numpy()
+
+    is_box1_inside_box2 = x1 >= x3 and x2 <= x4 and y1 >= y3 and y2 <= y4
+    if is_box1_inside_box2:
+        return [0]  # Box 1 is completely inside Box 2
 
     # Define the endpoints of the lines for box1
     line1_start = (x1, y1)
-    line1_end = (x1 + w1, y1)
+    line1_end = (x3, y1)  # Corrected endpoint calculation
     line2_start = (x1, y1)
-    line2_end = (x1, y1 + h1)
-    line3_start = (x1 + w1, y1)
-    line3_end = (x1 + w1, y1 + h1)
-    line4_start = (x1, y1 + h1)
-    line4_end = (x1 + w1, y1 + h1)
+    line2_end = (x1, y3)
+    line3_start = (x3, y3)  # Corrected endpoint calculation
+    line3_end = (x3, y1)  # Corrected endpoint calculation
+    line4_start = (x1, y3)
+    line4_end = (x3, y3)
 
     # Define the endpoints of the lines for box2
     line5_start = (x2, y2)
-    line5_end = (x2 + w2, y2)
+    line5_end = (x4, y2)
     line6_start = (x2, y2)
-    line6_end = (x2, y2 + h2)
-    line7_start = (x2 + w2, y2)
-    line7_end = (x2 + w2, y2 + h2)
-    line8_start = (x2, y2 + h2)
-    line8_end = (x2 + w2, y2 + h2)
+    line6_end = (x2, y4)
+    line7_start = (x4, y2)
+    line7_end = (x4, y4)
+    line8_start = (x2, y4)
+    line8_end = (x4, y4)
 
     # List of line segments for both bounding boxes
     lines1 = [(line1_start, line1_end), (line2_start, line2_end), (line3_start, line3_end), (line4_start, line4_end)]
@@ -131,29 +128,42 @@ def calculate_distance(box1, box2):
 
     return distances
 
+
+
 # Function to calculate the distance between two line segments using the formula for the minimum distance between two lines.
+
 def calculate_line_distance(line1, line2):
     x1, y1 = line1[0]
     x2, y2 = line1[1]
     x3, y3 = line2[0]
     x4, y4 = line2[1]
 
-    # Calculate the numerator and denominator for the formula of minimum distance between two lines
-    numerator = abs((x2 - x1)*(y3 - y4) + (x3 - x4)*(y2 - y1) + (x4 - x3)*(y1 - y3))
-    denominator = ((x2 - x1)**2 + (y2 - y1)**2)**0.5
+    # Check if the line segments intersect
+    if np.min([x1, x2]) > np.max([x3, x4]) or np.min([y1, y2]) > np.max([y3, y4]) or np.min([x3, x4]) > np.max([x1, x2]) or np.min([y3, y4]) > np.max([y1, y2]):
+        # Line segments do not intersect
+        # Calculate the distance between each endpoint of one segment and the other segment
+        distances = [
+            np.sqrt((x - x3)**2 + (y - y3)**2)  # Distance between endpoint of line1 and line2
+            for x, y in [line1[0], line1[1]]
+        ]
+        distances.extend([
+            np.sqrt((x - x1)**2 + (y - y1)**2)  # Distance between endpoint of line2 and line1
+            for x, y in [line2[0], line2[1]]
+        ])
+        return np.min(distances)
 
-    # Calculate the distance using the formula
-    distance = numerator / denominator
+    # Line segments intersect, so distance is 0
+    return 0.0
 
-    return distance
+
 
 
 
 # Function to determine the relative relationship between a mobile object and a stationary object based on their minimum distance.
 # Box 1 is the mobile object and box 2 is the stationary object
 def determine_relative_relationship(mobile_box, stationary_box):
-    close_threshold = 200  # Threshold for considering objects as "close"
-    nearby_threshold = 500  # Threshold for considering objects as "nearby"
+    close_threshold = 400  # Threshold for considering objects as "close"
+    nearby_threshold = 800  # Threshold for considering objects as "nearby"
     # Iterate through each bounding box of the mobile object
     for box1 in mobile_box:
         # Iterate through each bounding box of the stationary object
@@ -162,6 +172,7 @@ def determine_relative_relationship(mobile_box, stationary_box):
             distances = calculate_distance(box1[:4], box2[:4])
             # Find the minimum distance
             min_distance = min(distances)
+            sep(f"min_distance: {min_distance}")
             # Determine the relative relationship based on the minimum distance
             if min_distance < close_threshold:
                 return f"Close to"  # Mobile object is close to the stationary object
@@ -482,18 +493,18 @@ def process_video(widget_instance, frame_callback=None):
             else:
                 annotator = frame.copy()
             
-            #--------------------------------------------------------------
-            # Define the output folder path
-            output_folder = "output_frames_chair44/"
+            # #--------------------------------------------------------------
+            # # Define the output folder path
+            # output_folder = "output_frames_chair44/"
 
-            # Inside the try block where the frame is processed
-            annotator_output_path = os.path.join(output_folder, f"frame_{frame_num}.jpg")
-            print(annotator_output_path)
-            try:
-                cv2.imwrite(annotator_output_path, annotator)
-            except Exception as e:
-                print(f"An error occurred while saving the annotated frame: {e}")
-            #--------------------------------------------------------------
+            # # Inside the try block where the frame is processed
+            # annotator_output_path = os.path.join(output_folder, f"frame_{frame_num}.jpg")
+            # print(annotator_output_path)
+            # try:
+            #     cv2.imwrite(annotator_output_path, annotator)
+            # except Exception as e:
+            #     print(f"An error occurred while saving the annotated frame: {e}")
+            # #--------------------------------------------------------------
 
             # Calculate and display FPS
             fps = 1 / (new_frame_time - prev_frame_time)
