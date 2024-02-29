@@ -1,4 +1,5 @@
-# Comprehensive Location Tracking with YOLO and Voice Assistant
+# A Comprehensive Approach to Location Tracking of Easily-Misplaced Objects with YOLO and Voice Assistant![Uploading image.png…]()
+
 
 ## Table of Contents
 
