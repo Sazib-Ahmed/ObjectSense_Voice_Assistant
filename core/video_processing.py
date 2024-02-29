@@ -172,7 +172,7 @@ def determine_relative_relationship(mobile_box, stationary_box):
             distances = calculate_distance(box1[:4], box2[:4])
             # Find the minimum distance
             min_distance = min(distances)
-            sep(f"min_distance: {min_distance}")
+            #sep(f"min_distance: {min_distance}")
             # Determine the relative relationship based on the minimum distance
             if min_distance < close_threshold:
                 return f"Close to"  # Mobile object is close to the stationary object
