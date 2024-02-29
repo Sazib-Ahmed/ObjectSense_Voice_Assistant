@@ -341,7 +341,7 @@ def start_assistant(assistant_worker_thread,is_running):
         command = listen_for_command(assistant_worker_thread)
 
         # Define trigger keywords to identify the user's intent
-        triggerKeywords = ["assistant", "tracker", "seen", "id", "have you"]
+        triggerKeywords = ["hey assistant"] #["assistant", "tracker", "seen", "id", "have you"]
 
         # Process the command if it exists and contains relevant trigger keywords
         if command and any(keyword in command for keyword in triggerKeywords):
