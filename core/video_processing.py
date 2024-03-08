@@ -35,7 +35,7 @@ def determine_spatial_relationship(boxes1, area1, boxes2, area2):
 
             # Check if one box is completely inside the other
             is_box1_inside_box2 = x1 >= x3 and x2 <= x4 and y1 >= y3 and y2 <= y4
-            is_box2_inside_box1 = x3 >= x1 and x4 <= x2 and y3 >= y1 and y4 <= y2
+            #is_box2_inside_box1 = x3 >= x1 and x4 <= x2 and y3 >= y1 and y4 <= y2
 
             # Determine spatial relationship based on containment
             if is_box1_inside_box2:
@@ -237,6 +237,7 @@ def get_closest_stationary_object(mobile_object_boxes, stationary_object_boxes):
 
 
 def process_video(widget_instance, frame_callback=None):
+    
     # Define class names present in the COCO dataset
     class_names = (
         "person", "bicycle", "car", "motorcycle", "airplane",
@@ -259,8 +260,7 @@ def process_video(widget_instance, frame_callback=None):
 
     # Define moving object IDs
     mobile_object_ids = (
-        15,16,24,25,26,27,28,32,39,41,42,43,44,
-        45,63,64,65,66,67,73,74,75,76,77,78,79
+        15,16,24,25,26,27,28,32,39,41,42,43,44,45,63,64,65,66,67,73,74,75,76,77,78,79
     )
 
     # Define stationary object IDs
