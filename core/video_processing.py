@@ -96,11 +96,11 @@ def calculate_distance(box1, box2):
 
     # Define the endpoints of the lines for box1
     line1_start = (x1, y1)
-    line1_end = (x3, y1)  # Corrected endpoint calculation
+    line1_end = (x3, y1)  
     line2_start = (x1, y1)
     line2_end = (x1, y3)
-    line3_start = (x3, y3)  # Corrected endpoint calculation
-    line3_end = (x3, y1)  # Corrected endpoint calculation
+    line3_start = (x3, y3) 
+    line3_end = (x3, y1)  
     line4_start = (x1, y3)
     line4_end = (x3, y3)
 
