@@ -136,7 +136,8 @@ def calculate_line_distance(line1, line2):
     x4, y4 = line2[1]
 
     # Check if the line segments intersect
-    if np.min([x1, x2]) > np.max([x3, x4]) or np.min([y1, y2]) > np.max([y3, y4]) or np.min([x3, x4]) > np.max([x1, x2]) or np.min([y3, y4]) > np.max([y1, y2]):
+    if np.min([x1, x2]) > np.max([x3, x4]) or np.min([y1, y2]) > np.max([y3, y4]) or 
+        np.min([x3, x4]) > np.max([x1, x2]) or np.min([y3, y4]) > np.max([y1, y2]):
         # Line segments do not intersect
         # Calculate the distance between each endpoint of one segment and the other segment
         distances = [
