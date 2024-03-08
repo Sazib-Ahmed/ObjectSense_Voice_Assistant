@@ -128,10 +128,7 @@ def calculate_distance(box1, box2):
 
     return distances
 
-
-
 # Function to calculate the distance between two line segments using the formula for the minimum distance between two lines.
-
 def calculate_line_distance(line1, line2):
     x1, y1 = line1[0]
     x2, y2 = line1[1]
@@ -237,7 +234,7 @@ def get_closest_stationary_object(mobile_object_boxes, stationary_object_boxes):
 
 
 def process_video(widget_instance, frame_callback=None):
-    
+
     # Define class names present in the COCO dataset
     class_names = (
         "person", "bicycle", "car", "motorcycle", "airplane",
